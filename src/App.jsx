@@ -7,6 +7,10 @@ import StatsPage from './StatsPage.jsx'
 import TitleDetailModal from './TitleDetailModal.jsx'
 import RandomizerWheel from './RandomizerWheel.jsx'
 import PinModal from './PinModal.jsx'
+import FriendsPage from './FriendsPage.jsx'
+import CommunityFeed from './CommunityFeed.jsx'
+import AuthScreen from './AuthScreen.jsx'
+import { useAuth, SUPABASE_ENABLED } from './hooks/useAuth.js'
 import {
   TITLES, DEFAULT_WATCHED, getTitlesForListSize, TIER_MAP, getRuntimeMinutes,
 } from './data/titles.js'
@@ -17,6 +21,7 @@ import {
   LOCK_TIERS, LOCK_TIER_ORDER, getLocksForTitle, getPrimaryLock, isTitleLocked,
   SK_LOCK_PINS,
 } from './data/locks.js'
+import { fetchFriendships } from './lib/supabaseHelpers.js'
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 const SK_CONFIG       = 'mvt-config'
@@ -462,6 +467,10 @@ const FILTERS       = ['all','unwatched','watched','movies','tv','animated']
 const FILTER_LABELS = { all:'All', unwatched:'Unwatched', watched:'Watched', movies:'Movies', tv:'TV', animated:'Animated' }
 
 export default function App() {
+  // ── Auth ──
+  const { user, loading: authLoading } = useAuth()
+  const [showAuth, setShowAuth] = useState(false)
+
   // ── Profile ──
   const [profile, setProfile] = useState(() => loadJSON(SK_PROFILE, null))
 
@@ -505,6 +514,20 @@ export default function App() {
   // { [titleId]: dateStr 'YYYY-MM-DD' }
   const [planner, setPlanner] = useState(() => loadJSON(SK_PLANNER, {}))
 
+  // ── Friends (for Community feed sorting) ──
+  const [friendIds, setFriendIds] = useState([])
+  useEffect(() => {
+    if (!SUPABASE_ENABLED || !user) { setFriendIds([]); return }
+    fetchFriendships(user.id).then(({ data }) => {
+      if (!data) return
+      const ids = data
+        .filter(f => f.status === 'accepted')
+        .map(f => f.requester?.id === user.id ? f.addressee?.id : f.requester?.id)
+        .filter(Boolean)
+      setFriendIds(ids)
+    })
+  }, [user])
+
   // ── UI state ──
   const [activeTab,      setActiveTab]      = useState('tracker')
   const [filter,         setFilter]         = useState('all')
@@ -514,6 +537,7 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false)
   const [showSettings,   setShowSettings]   = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [showFriends,    setShowFriends]    = useState(false)
   const [showWheel,      setShowWheel]      = useState(false)
 
   // ── Feature state ──
@@ -803,6 +827,24 @@ export default function App() {
   }
 
   // ── Gates ──
+
+  // Show loading spinner while auth resolves
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-2 border-[#E81C2E]/40 border-t-[#E81C2E] animate-spin"/>
+          <p className="text-[#444] text-xs tracking-widest uppercase font-bebas">Loading…</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show auth screen if Supabase is enabled and user is not logged in
+  if (SUPABASE_ENABLED && !user && showAuth) {
+    return <AuthScreen onSkip={() => setShowAuth(false)}/>
+  }
+
   if (!profile) return <ProfileSetup onComplete={handleProfileComplete}/>
 
   function handleOnboardingComplete(cfg) {
@@ -895,7 +937,20 @@ export default function App() {
           onSetupLock={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
           onDisableLock={handleLockDisable}
           onChangeLockPin={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
+          onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
+          onShowFriends={() => { setShowProfile(false); setShowFriends(true) }}
+          userId={user?.id}
         />
+      )}
+
+      {/* ── FRIENDS PAGE ── */}
+      {showFriends && (
+        <div className="fixed inset-0 z-40 bg-[#0a0a0a]" style={{ animation: 'slideUp 0.25s ease both' }}>
+          <FriendsPage
+            userId={user?.id}
+            onClose={() => setShowFriends(false)}
+          />
+        </div>
       )}
 
       {/* ── RATING MODAL ── */}
@@ -1133,6 +1188,13 @@ export default function App() {
         />
       )}
 
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* COMMUNITY TAB                                                           */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'community' && (
+        <CommunityFeed user={user} friendIds={friendIds}/>
+      )}
+
       {/* ── Bottom nav ── */}
       <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#111111', borderTop: '1px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto flex">
@@ -1162,6 +1224,14 @@ export default function App() {
               ),
             },
             {
+              id: 'community', label: 'SOCIAL', badge: null,
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
+                </svg>
+              ),
+            },
+            {
               id: 'profile', label: 'PROFILE', badge: null, isProfileTab: true,
               icon: (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1170,13 +1240,15 @@ export default function App() {
               ),
             },
           ].map(tab => {
-            const isActive = tab.isProfileTab ? showProfile : (activeTab === tab.id && !showProfile)
+            const isActive = tab.isProfileTab
+              ? (showProfile && !showFriends)
+              : (activeTab === tab.id && !showProfile && !showFriends)
             return (
               <button
                 key={tab.id}
                 onClick={() => {
-                  if (tab.isProfileTab) { setShowProfile(true) }
-                  else { setActiveTab(tab.id); setShowProfile(false) }
+                  if (tab.isProfileTab) { setShowProfile(true); setShowFriends(false) }
+                  else { setActiveTab(tab.id); setShowProfile(false); setShowFriends(false) }
                 }}
                 className={[
                   'flex-1 flex flex-col items-center gap-1 py-3 transition-all relative',

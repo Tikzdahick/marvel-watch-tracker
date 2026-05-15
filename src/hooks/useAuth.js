@@ -14,6 +14,9 @@
 import { useState, useEffect } from 'react'
 import { getSupabase, SUPABASE_ENABLED } from '../lib/supabase.js'
 
+// Re-export so consumers only need to import from this single module
+export { SUPABASE_ENABLED }
+
 export function useAuth() {
   const [user,    setUser]    = useState(null)
   const [session, setSession] = useState(null)

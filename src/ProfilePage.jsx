@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react'
 import { calcStreak, calcLongestStreak } from './data/achievements.js'
 import { LOCK_TIERS, LOCK_TIER_ORDER } from './data/locks.js'
+import { SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
 
 const PRESET_AVATARS = [
   { emoji: '🤖', label: 'Iron Man' },
@@ -66,8 +67,13 @@ export default function ProfilePage({
   onSetupLock,    // (tierKey) → void — open PIN setup modal
   onDisableLock,  // (tierKey) → void — disable a lock (verifies current PIN first)
   onChangeLockPin,// (tierKey) → void — change a PIN
+  onSignOut,      // () → void — called after confirmed sign out
+  onShowFriends,  // () → void — open Friends page
+  userId,         // string | undefined — current auth user id
 }) {
-  const [editing, setEditing] = useState(false)
+  const [editing,         setEditing]         = useState(false)
+  const [confirmSignOut,  setConfirmSignOut]   = useState(false)
+  const [signingOut,      setSigningOut]       = useState(false)
 
   // Edit state — initialised from current values
   const [editName,   setEditName]   = useState(profile.name)
@@ -116,6 +122,16 @@ export default function ProfilePage({
     setEditList(config.listSize)
     setEditPace(config.pace)
     setEditing(false)
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    try {
+      await signOut()
+      onSignOut?.()
+    } catch {}
+    setSigningOut(false)
+    setConfirmSignOut(false)
   }
 
   const displayAvatar = editPhoto ?? editAvatar
@@ -382,15 +398,75 @@ export default function ProfilePage({
         </div>
 
         {/* ── Reset Onboarding ── */}
-        <div className="pt-2 border-t border-[#161616]">
+        <div className="pt-2 border-t border-[#161616] space-y-2">
           <button
             onClick={onResetOnboarding}
             className="w-full py-3 rounded-xl border border-[#1e1e1e] text-[#444] text-xs font-semibold tracking-widest hover:border-[#333] hover:text-[#666] transition-all uppercase"
           >
             ↩ Redo Onboarding
           </button>
+
+          {/* Friends — only shown when Supabase auth is active */}
+          {SUPABASE_ENABLED && (
+            <button
+              onClick={onShowFriends}
+              className="w-full py-3 rounded-xl border border-[#2a2a2a] text-[#888] text-xs font-semibold tracking-widest hover:border-[#3a3a3a] hover:text-white transition-all uppercase flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
+              </svg>
+              Friends
+            </button>
+          )}
+
+          {/* Sign Out — only shown when Supabase auth is active */}
+          {SUPABASE_ENABLED && (
+            <button
+              onClick={() => setConfirmSignOut(true)}
+              className="w-full py-3 rounded-xl border border-[#E81C2E]/20 text-[#E81C2E]/70 text-xs font-semibold tracking-widest hover:border-[#E81C2E]/40 hover:text-[#E81C2E] transition-all uppercase"
+            >
+              ⬡ Sign Out
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ── Sign Out confirmation modal ── */}
+      {confirmSignOut && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)' }}
+          onClick={() => !signingOut && setConfirmSignOut(false)}
+        >
+          <div
+            className="w-full max-w-xs bg-[#0f0f0f] border border-[#222] rounded-2xl p-6 text-center"
+            style={{ animation: 'completionPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-3">👋</div>
+            <h3 className="font-bebas text-xl tracking-widest text-white mb-2">SIGN OUT?</h3>
+            <p className="text-[#555] text-sm mb-6 leading-relaxed">
+              Your progress is saved in the cloud. You can sign back in any time.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSignOut(false)}
+                disabled={signingOut}
+                className="flex-1 py-3 rounded-xl text-[#555] text-sm border border-[#222] hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSignOut}
+                disabled={signingOut}
+                className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_12px_rgba(232,28,46,0.4)] transition-all disabled:opacity-50"
+              >
+                {signingOut ? '…' : 'SIGN OUT'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
