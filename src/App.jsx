@@ -4,12 +4,19 @@ import Achievements from './Achievements.jsx'
 import ProfileSetup from './ProfileSetup.jsx'
 import ProfilePage from './ProfilePage.jsx'
 import StatsPage from './StatsPage.jsx'
+import TitleDetailModal from './TitleDetailModal.jsx'
+import RandomizerWheel from './RandomizerWheel.jsx'
+import PinModal from './PinModal.jsx'
 import {
   TITLES, DEFAULT_WATCHED, getTitlesForListSize, TIER_MAP, getRuntimeMinutes,
 } from './data/titles.js'
 import {
   ACHIEVEMENTS, ACHIEVEMENT_MAP, checkAchievements, todayStr,
 } from './data/achievements.js'
+import {
+  LOCK_TIERS, LOCK_TIER_ORDER, getLocksForTitle, getPrimaryLock, isTitleLocked,
+  SK_LOCK_PINS,
+} from './data/locks.js'
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 const SK_CONFIG       = 'mvt-config'
@@ -23,6 +30,7 @@ const SK_RATINGS      = 'mvt-ratings'
 const SK_NOTES        = 'mvt-notes'
 const SK_GOAL         = 'mvt-goal'
 const SK_REMINDER     = 'mvt-reminder'
+const SK_PLANNER      = 'mvt-planner'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DOOMSDAY      = new Date('2026-12-18T00:00:00')
@@ -79,19 +87,24 @@ function TypeBadge({ type }) {
   )
 }
 
-function CheckCircle({ watched, locked, comingSoon }) {
+function CheckCircle({ watched, isLocked, lockTier, comingSoon }) {
   if (comingSoon) return (
     <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center border-2 border-[#F5C518]/40">
       <span className="text-[10px] leading-none">⏳</span>
     </div>
   )
-  if (locked) return (
-    <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center bg-pink-950 border border-pink-500/40">
-      <svg className="w-3 h-3 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
-        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
-      </svg>
-    </div>
-  )
+  if (isLocked) {
+    const bg   = lockTier?.bgColor     ?? 'bg-pink-950'
+    const bdr  = lockTier?.borderColor ?? 'border border-pink-500/40'
+    const clr  = lockTier?.color       ?? '#f9a8d4'
+    return (
+      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center ${bg} border ${bdr}`}>
+        <span className="text-[10px] leading-none" style={{ color: clr }}>
+          {lockTier?.emoji ?? '🔒'}
+        </span>
+      </div>
+    )
+  }
   return (
     <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
       watched ? 'bg-[#E81C2E] shadow-[0_0_8px_rgba(232,28,46,0.4)]' : 'border-2 border-[#2a2a2a]'
@@ -105,36 +118,49 @@ function CheckCircle({ watched, locked, comingSoon }) {
   )
 }
 
-function TitleCard({ title, isWatched, isNextUp, onToggle, rating, hasNote, onLongPress, isRandomPick }) {
-  const locked      = !!title.locked
-  const comingSoon  = !!title.comingSoon
-  const pressRef    = useRef(null)
+function TitleCard({
+  title, isWatched, isNextUp, onToggle, onOpenDetail, rating, hasNote,
+  isRandomPick, isLocked, lockTier, isPlanned,
+}) {
+  const comingSoon = !!title.comingSoon
+  const pressRef   = useRef(null)
 
   function startPress() {
-    pressRef.current = setTimeout(() => { onLongPress?.() }, 600)
+    pressRef.current = setTimeout(() => onOpenDetail?.(), 600)
   }
   function endPress() { clearTimeout(pressRef.current) }
+
+  function handleClick() {
+    if (comingSoon) return
+    if (isLocked) { onOpenDetail?.(); return }   // locked → open detail w/ unlock btn
+    onToggle(title.id)
+  }
 
   return (
     <li
       id={`title-${title.id}`}
-      onClick={() => !locked && !comingSoon && onToggle(title.id)}
+      onClick={handleClick}
       onMouseDown={startPress}
       onMouseUp={endPress}
       onMouseLeave={endPress}
-      onTouchStart={e => { startPress() }}
+      onTouchStart={startPress}
       onTouchEnd={endPress}
       className={[
         'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-150 select-none',
         isRandomPick ? 'cursor-pointer bg-[#1a0d00] border-[#F5C518] shadow-[0_0_18px_rgba(245,197,24,0.25)]'
         : comingSoon ? 'cursor-default bg-[#0f0d00] border-[#F5C518]/20'
-        : locked     ? 'cursor-default bg-[#100a0a] border-pink-900/40'
+        : isLocked   ? 'cursor-pointer bg-[#100a0a] border-pink-900/40 hover:border-pink-800/60'
         : isWatched  ? 'cursor-pointer bg-[#0d0d0d] border-[#181818] active:scale-[0.99]'
         : isNextUp   ? 'cursor-pointer bg-[#180000] border-[#E81C2E]/50 shadow-[0_0_16px_rgba(232,28,46,0.12)] active:scale-[0.99]'
         : 'cursor-pointer bg-[#111] border-[#1c1c1c] hover:border-[#2a2a2a] active:scale-[0.99]',
       ].join(' ')}
     >
-      <CheckCircle watched={isWatched} locked={locked} comingSoon={comingSoon}/>
+      <CheckCircle
+        watched={isWatched}
+        isLocked={isLocked}
+        lockTier={lockTier}
+        comingSoon={comingSoon}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
           <TypeBadge type={title.type}/>
@@ -153,20 +179,23 @@ function TitleCard({ title, isWatched, isNextUp, onToggle, rating, hasNote, onLo
               COMING SOON
             </span>
           )}
-          {locked && (
-            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border bg-pink-950 text-pink-400 border-pink-400/25 font-bold tracking-widest">
-              WATCH WITH PARENTS
+          {isLocked && lockTier && (
+            <span
+              className={`inline-block text-[9px] px-1.5 py-[2px] rounded border font-bold tracking-widest ${lockTier.bgColor} ${lockTier.borderColor}`}
+              style={{ color: lockTier.color }}
+            >
+              {lockTier.emoji} {lockTier.rating}
             </span>
           )}
         </div>
         <p className={`text-sm leading-snug font-medium ${
           isWatched    ? 'line-through text-[#3a3a3a]'
           : comingSoon ? 'text-[#888]'
-          : locked     ? 'text-[#888]'
+          : isLocked   ? 'text-[#666]'
           : 'text-white'
         }`}>{title.title}</p>
         {/* Mini star rating */}
-        {rating != null && (
+        {rating != null && !isLocked && (
           <div className="flex mt-0.5">
             {[1,2,3,4,5].map(n => (
               <span key={n} className="text-[10px]" style={{ color: n <= rating ? '#F5C518' : '#2a2a2a' }}>★</span>
@@ -175,7 +204,8 @@ function TitleCard({ title, isWatched, isNextUp, onToggle, rating, hasNote, onLo
         )}
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {hasNote && <span className="text-[12px] opacity-60" title="Has note">📝</span>}
+        {isPlanned && <span className="text-[12px] opacity-70" title="Scheduled">📅</span>}
+        {hasNote && !isLocked && <span className="text-[12px] opacity-60" title="Has note">📝</span>}
         <span className="text-[11px] text-[#2a2a2a] font-mono tabular-nums">{pad2(title.id)}</span>
       </div>
     </li>
@@ -275,60 +305,38 @@ function CompletionModal({ config, watchedCount, achievementsUnlocked, onClose }
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Decoration */}
         <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 0%, rgba(245,197,24,0.08) 0%, transparent 60%)' }}/>
         </div>
-
         <div className="relative">
-          {/* M logo */}
           <div
             className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black shadow-[0_0_24px_rgba(245,197,24,0.4)]"
             style={{ background: 'linear-gradient(135deg, #F5C518 0%, #d4a017 100%)' }}
           >
             <span className="text-black">M</span>
           </div>
-
-          {/* Stars */}
           <div className="text-2xl mb-2">✦ ✦ ✦</div>
-
           <h2 className="font-bebas text-3xl tracking-[0.15em] text-[#F5C518] mb-1">MARVEL UNIVERSE</h2>
           <h3 className="font-bebas text-4xl tracking-[0.1em] text-white mb-6">COMPLETE</h3>
-
           <div className="space-y-2 mb-6">
-            <div className="flex justify-between items-center py-2 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555] uppercase tracking-widest">Titles Watched</span>
-              <span className="font-bebas text-xl text-white">{watchedCount}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555] uppercase tracking-widest">List Size</span>
-              <span className="font-bebas text-xl text-[#E81C2E]">{LIST_LABELS[config.listSize]}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555] uppercase tracking-widest">Pace</span>
-              <span className="font-bebas text-xl text-[#F5C518]">{PACE_LABELS[config.pace]}</span>
-            </div>
-            <div className="flex justify-between items-center py-2 border-b border-[#1a1a1a]">
-              <span className="text-[11px] text-[#555] uppercase tracking-widest">Completed</span>
-              <span className="text-sm text-white font-medium">{today}</span>
-            </div>
-            <div className="flex justify-between items-center py-2">
-              <span className="text-[11px] text-[#555] uppercase tracking-widest">Achievements</span>
-              <span className="font-bebas text-xl text-[#F5C518]">🏆 {achievementsUnlocked}</span>
-            </div>
+            {[
+              ['Titles Watched', watchedCount, 'text-white'],
+              ['List Size',  LIST_LABELS[config.listSize], 'text-[#E81C2E]'],
+              ['Pace',       PACE_LABELS[config.pace],     'text-[#F5C518]'],
+              ['Completed',  today,                          'text-white'],
+              ['Achievements', `🏆 ${achievementsUnlocked}`, 'text-[#F5C518]'],
+            ].map(([label, val, cls]) => (
+              <div key={label} className="flex justify-between items-center py-2 border-b border-[#1a1a1a] last:border-0">
+                <span className="text-[11px] text-[#555] uppercase tracking-widest">{label}</span>
+                <span className={`font-bebas text-xl ${cls}`}>{val}</span>
+              </div>
+            ))}
           </div>
-
           <div className="flex gap-3">
-            <button
-              onClick={handleShare}
-              className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_16px_rgba(232,28,46,0.5)] transition-all"
-            >
+            <button onClick={handleShare} className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_16px_rgba(232,28,46,0.5)] transition-all">
               📱 SHARE
             </button>
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#1a1a1a] text-[#666] hover:text-white border border-[#222] transition-all"
-            >
+            <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#1a1a1a] text-[#666] hover:text-white border border-[#222] transition-all">
               CLOSE
             </button>
           </div>
@@ -365,39 +373,32 @@ function SettingsModal({ config, onUpdate, onClose }) {
       >
         <div className="w-10 h-1 bg-[#333] rounded-full mx-auto mb-6"/>
         <h2 className="font-bebas text-2xl tracking-[0.15em] text-white mb-5">SETTINGS</h2>
-
         <div className="mb-5">
           <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2">List Size</div>
           <div className="grid grid-cols-4 gap-2">
             {LIST_OPTS.map(o => (
               <button key={o.id} onClick={() => setListSize(o.id)}
                 className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
-                  listSize === o.id
-                    ? 'bg-[#E81C2E] border-[#E81C2E] text-white'
-                    : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
+                  listSize === o.id ? 'bg-[#E81C2E] border-[#E81C2E] text-white' : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
                 }`}>
                 {o.label}<br/><span className="text-[10px] opacity-60">{o.count}</span>
               </button>
             ))}
           </div>
         </div>
-
         <div className="mb-6">
           <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2">Pace</div>
           <div className="grid grid-cols-2 gap-2">
             {PACE_OPTS.map(o => (
               <button key={o.id} onClick={() => setPace(o.id)}
                 className={`py-2 rounded-lg text-xs font-semibold border transition-all ${
-                  pace === o.id
-                    ? 'bg-[#E81C2E] border-[#E81C2E] text-white'
-                    : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
+                  pace === o.id ? 'bg-[#E81C2E] border-[#E81C2E] text-white' : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
                 }`}>
                 {o.label}
               </button>
             ))}
           </div>
         </div>
-
         <button
           onClick={() => { onUpdate({ listSize, pace }); onClose() }}
           className="w-full py-3.5 rounded-xl font-bebas text-xl tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_16px_rgba(232,28,46,0.4)] transition-all"
@@ -429,8 +430,7 @@ function RatingModal({ titleName, currentRating, onRate, onDismiss }) {
         <p className="text-white font-medium text-[15px] mb-5 leading-snug">{titleName}</p>
         <div className="flex justify-center gap-3 mb-6">
           {[1,2,3,4,5].map(n => (
-            <button
-              key={n}
+            <button key={n}
               onMouseEnter={() => setHovered(n)}
               onMouseLeave={() => setHovered(selected)}
               onClick={() => setSelected(n)}
@@ -441,10 +441,7 @@ function RatingModal({ titleName, currentRating, onRate, onDismiss }) {
           ))}
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={onDismiss}
-            className="flex-1 py-3 rounded-xl text-[#555] text-sm border border-[#222] hover:text-white transition-colors"
-          >
+          <button onClick={onDismiss} className="flex-1 py-3 rounded-xl text-[#555] text-sm border border-[#222] hover:text-white transition-colors">
             Maybe later
           </button>
           <button
@@ -460,59 +457,8 @@ function RatingModal({ titleName, currentRating, onRate, onDismiss }) {
   )
 }
 
-// ── Notes Modal ───────────────────────────────────────────────────────────────
-function NotesModal({ titleName, currentNote, onSave, onDismiss }) {
-  const [text, setText] = useState(currentNote ?? '')
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
-      onClick={onDismiss}
-    >
-      <div
-        className="w-full max-w-lg bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl p-5"
-        style={{ animation: 'slideUp 0.3s ease both' }}
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="w-10 h-1 bg-[#333] rounded-full mx-auto mb-4"/>
-        <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">📝 Personal Note</div>
-        <p className="text-white text-sm font-medium mb-3 truncate">{titleName}</p>
-        <textarea
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder="Add your review or thoughts…"
-          rows={4}
-          autoFocus
-          className="w-full bg-[#161616] border border-[#1e1e1e] rounded-xl px-3 py-3 text-white text-sm placeholder-[#333] focus:outline-none focus:border-[#E81C2E]/50 resize-none mb-4"
-        />
-        <div className="flex gap-3">
-          {currentNote && (
-            <button
-              onClick={() => { onSave(''); onDismiss() }}
-              className="px-4 py-3 rounded-xl text-[#E81C2E] text-sm border border-[#E81C2E]/30 hover:bg-[#E81C2E]/10 transition-colors"
-            >
-              Clear
-            </button>
-          )}
-          <button onClick={onDismiss}
-            className="flex-1 py-3 rounded-xl text-[#555] text-sm border border-[#222] hover:text-white transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => { onSave(text.trim()); onDismiss() }}
-            className="flex-1 py-3 rounded-xl font-bebas text-xl tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_12px_rgba(232,28,46,0.4)] transition-all"
-          >
-            SAVE
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ── Main App ──────────────────────────────────────────────────────────────────
-const FILTERS      = ['all','unwatched','watched','movies','tv','animated']
+const FILTERS       = ['all','unwatched','watched','movies','tv','animated']
 const FILTER_LABELS = { all:'All', unwatched:'Unwatched', watched:'Watched', movies:'Movies', tv:'TV', animated:'Animated' }
 
 export default function App() {
@@ -520,22 +466,16 @@ export default function App() {
   const [profile, setProfile] = useState(() => loadJSON(SK_PROFILE, null))
 
   // ── Onboarding ──
-  const [onboarded, setOnboarded] = useState(() =>
-    loadJSON(SK_ONBOARDED, false)
-  )
-  const [config, setConfig] = useState(() =>
-    loadJSON(SK_CONFIG, { listSize: 'avenger', pace: 'casual' })
-  )
+  const [onboarded, setOnboarded] = useState(() => loadJSON(SK_ONBOARDED, false))
+  const [config,    setConfig]    = useState(() => loadJSON(SK_CONFIG, { listSize: 'avenger', pace: 'casual' }))
 
   // ── Watched ──
   const [watched, setWatched] = useState(() =>
     new Set(loadJSON(SK_WATCHED, [...DEFAULT_WATCHED]))
   )
 
-  // ── Watch history (date → [ids]) ──
-  const [watchHistory, setWatchHistory] = useState(() =>
-    loadJSON(SK_HISTORY, {})
-  )
+  // ── Watch history ──
+  const [watchHistory, setWatchHistory] = useState(() => loadJSON(SK_HISTORY, {}))
 
   // ── Login dates ──
   const [loginDates, setLoginDates] = useState(() => {
@@ -552,6 +492,19 @@ export default function App() {
   // ── Achievements ──
   const [achievements, setAchievements] = useState(initAchievements)
 
+  // ── Content lock state ──
+  // lockPins: { pg13: '1234'|null, tv14: ..., tvma: ..., r: ... }
+  // null = tier lock disabled; string = PIN set and lock active
+  const [lockPins,      setLockPins]      = useState(() => loadJSON(SK_LOCK_PINS, {}))
+  // unlockedTiers: Set of tier keys unlocked this session (e.g. new Set(['pg13']))
+  const [unlockedTiers, setUnlockedTiers] = useState(() => new Set())
+  // Which tier PIN modal to show: { tierKey, mode } or null
+  const [pinModal,      setPinModal]      = useState(null)
+
+  // ── Watch Planner ──
+  // { [titleId]: dateStr 'YYYY-MM-DD' }
+  const [planner, setPlanner] = useState(() => loadJSON(SK_PLANNER, {}))
+
   // ── UI state ──
   const [activeTab,      setActiveTab]      = useState('tracker')
   const [filter,         setFilter]         = useState('all')
@@ -561,18 +514,21 @@ export default function App() {
   const [showCompletion, setShowCompletion] = useState(false)
   const [showSettings,   setShowSettings]   = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [showWheel,      setShowWheel]      = useState(false)
+
   // ── Feature state ──
-  const [ratingModalId,  setRatingModalId]  = useState(null)   // id or null
-  const [notesModalId,   setNotesModalId]   = useState(null)   // id or null
-  const [randomPickId,   setRandomPickId]   = useState(null)   // id or null
+  const [ratingModalId,  setRatingModalId]  = useState(null)
+  const [detailModalId,  setDetailModalId]  = useState(null)
+  const [randomPickId,   setRandomPickId]   = useState(null)
   const [ratings,        setRatings]        = useState(() => loadJSON(SK_RATINGS, {}))
   const [notes,          setNotes]          = useState(() => loadJSON(SK_NOTES, {}))
   const [goal,           setGoal]           = useState(() => loadJSON(SK_GOAL, { weekly: 3 }))
   const [reminder,       setReminder]       = useState(() => loadJSON(SK_REMINDER, { time: '20:00', enabled: false }))
-  const shownCompletion  = useRef(false)
-  const isInitialMount   = useRef(true)
 
-  // ── Derived list data (must be declared before any effect that references them) ──
+  const shownCompletion = useRef(false)
+  const isInitialMount  = useRef(true)
+
+  // ── Derived list data (must be before any useEffect that uses them) ──
   const listTitles = useMemo(
     () => getTitlesForListSize(config.listSize),
     [config.listSize]
@@ -583,15 +539,17 @@ export default function App() {
   )
 
   // ── Persist ──
-  useEffect(() => { saveJSON(SK_WATCHED, [...watched]) },      [watched])
-  useEffect(() => { saveJSON(SK_HISTORY, watchHistory) },      [watchHistory])
-  useEffect(() => { saveJSON(SK_ACHIEVEMENTS, achievements) }, [achievements])
-  useEffect(() => { saveJSON(SK_CONFIG, config) },             [config])
+  useEffect(() => { saveJSON(SK_WATCHED,      [...watched]) },     [watched])
+  useEffect(() => { saveJSON(SK_HISTORY,      watchHistory) },     [watchHistory])
+  useEffect(() => { saveJSON(SK_ACHIEVEMENTS, achievements) },     [achievements])
+  useEffect(() => { saveJSON(SK_CONFIG,       config) },           [config])
   useEffect(() => { if (profile) saveJSON(SK_PROFILE, profile) }, [profile])
   useEffect(() => { saveJSON(SK_RATINGS,  ratings) },  [ratings])
   useEffect(() => { saveJSON(SK_NOTES,    notes) },    [notes])
   useEffect(() => { saveJSON(SK_GOAL,     goal) },     [goal])
   useEffect(() => { saveJSON(SK_REMINDER, reminder) }, [reminder])
+  useEffect(() => { saveJSON(SK_LOCK_PINS, lockPins) }, [lockPins])
+  useEffect(() => { saveJSON(SK_PLANNER,   planner) },  [planner])
 
   // ── Daily reminder notification ──
   useEffect(() => {
@@ -603,7 +561,7 @@ export default function App() {
     next.setHours(h, m, 0, 0)
     if (next <= now) next.setDate(next.getDate() + 1)
     const timer = setTimeout(() => {
-      const nextUp = listTitles.find(t => !watched.has(t.id) && !t.locked)
+      const nextUp = listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers))
       try {
         new Notification('🎬 Marvel Watch Tracker', {
           body: `Time to watch: ${nextUp?.title ?? 'your next Marvel title'}!`,
@@ -612,7 +570,7 @@ export default function App() {
       } catch {}
     }, next.getTime() - now.getTime())
     return () => clearTimeout(timer)
-  }, [reminder, listTitles, watched])
+  }, [reminder, listTitles, watched, lockPins, unlockedTiers])
 
   // ── Scroll to random pick ──
   useEffect(() => {
@@ -632,54 +590,45 @@ export default function App() {
   // ── Check achievements ──
   const runAchievementCheck = useCallback((newWatched, newHistory) => {
     setAchievements(prev => {
-      const ctx = {
-        watched: newWatched,
-        watchHistory: newHistory,
-        loginDates,
-        listSize: config.listSize,
-      }
+      const ctx = { watched: newWatched, watchHistory: newHistory, loginDates, listSize: config.listSize }
       const newIds = checkAchievements(prev, ctx)
       if (!newIds.length) return prev
       const next = { ...prev }
-      const now = new Date().toISOString()
+      const now  = new Date().toISOString()
       for (const id of newIds) next[id] = { unlocked: true, unlockedAt: now }
       setToastQueue(q => [...q, ...newIds])
       return next
     })
   }, [loginDates, config.listSize])
 
-  // Check login-based achievements on mount (silent — no toasts on first load)
+  // Check login-based achievements on mount
   useEffect(() => {
     setAchievements(prev => {
       const ctx = { watched, watchHistory, loginDates, listSize: config.listSize }
       const newIds = checkAchievements(prev, ctx)
       if (!newIds.length) return prev
       const next = { ...prev }
-      const now = new Date().toISOString()
+      const now  = new Date().toISOString()
       for (const id of newIds) next[id] = { unlocked: true, unlockedAt: now }
-      // Silent on initial mount — don't flood with toasts for already-earned achievements
       if (!isInitialMount.current) setToastQueue(q => [...q, ...newIds])
       return next
     })
 
-    // Night owl — check if opening between midnight and 3 AM
     const h = new Date().getHours()
     if (h >= 0 && h < 3) {
       setAchievements(prev => {
         if (prev['secret-midnight']?.unlocked) return prev
         const next = { ...prev, 'secret-midnight': { unlocked: true, unlockedAt: new Date().toISOString() } }
-        // Night owl can toast even on first load — it's a genuine surprise
         setToastQueue(q => [...q, 'secret-midnight'])
         return next
       })
     }
 
-    // Allow toasts from now on
     isInitialMount.current = false
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Watch for 100% completion to show modal (once per session)
+  // Watch for 100% completion
   useEffect(() => {
     if (listWatchedCount >= listTitles.length && !shownCompletion.current) {
       shownCompletion.current = true
@@ -690,7 +639,9 @@ export default function App() {
   // ── Toggle watched ──
   const toggle = useCallback((id) => {
     const title = TITLES.find(t => t.id === id)
-    if (title?.locked || title?.comingSoon) return
+    if (!title) return
+    if (title.comingSoon) return
+    if (isTitleLocked(id, lockPins, unlockedTiers)) return
 
     const isMarkingWatched = !watched.has(id)
 
@@ -703,10 +654,7 @@ export default function App() {
         const today = todayStr()
         const nextH = { ...prevH }
         if (!wasWatched) {
-          // marking as watched — record in history
           nextH[today] = [...new Set([...(nextH[today] ?? []), id])]
-
-          // Special: "I Am Iron Man" — Iron Man (21) as very first thing watched
           if (id === 21 && nextW.size === 1) {
             setAchievements(prev => {
               if (prev['secret-iron-man']?.unlocked) return prev
@@ -726,13 +674,13 @@ export default function App() {
     if (isMarkingWatched) {
       setTimeout(() => setRatingModalId(id), 150)
     }
-  }, [runAchievementCheck, watched])
+  }, [runAchievementCheck, watched, lockPins, unlockedTiers])
 
-  // ── Stats (based on chosen list size) ──
-  const total        = listTitles.length
-  const remaining    = total - listWatchedCount
-  const pct          = total ? Math.round((listWatchedCount / total) * 100) : 0
-  const totalHours   = Math.floor(
+  // ── Stats ──
+  const total      = listTitles.length
+  const remaining  = total - listWatchedCount
+  const pct        = total ? Math.round((listWatchedCount / total) * 100) : 0
+  const totalHours = Math.floor(
     listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
   )
 
@@ -740,16 +688,10 @@ export default function App() {
   const paceInfo = useMemo(() => {
     const target = PACE_TARGETS[config.pace]
     if (!target) {
-      // Casual — historical pace estimate
       const daysLeft = remaining / HISTORICAL_PACE
       const finish = new Date()
       finish.setDate(finish.getDate() + Math.ceil(daysLeft))
-      return {
-        label: 'Est. finish',
-        dateStr: finish.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        onTrack: null,
-        reqPerWeek: null,
-      }
+      return { label: 'Est. finish', dateStr: finish.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), onTrack: null, reqPerWeek: null }
     }
     const daysUntilTarget = Math.max(0, (target - Date.now()) / 86400000)
     const reqPerDay  = daysUntilTarget > 0 ? remaining / daysUntilTarget : Infinity
@@ -759,16 +701,14 @@ export default function App() {
     return {
       label: 'Target',
       dateStr: target.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      onTrack,
-      reqPerWeek: reqPerWeek.toFixed(1),
-      curPerWeek: curPerWeek.toFixed(1),
+      onTrack, reqPerWeek: reqPerWeek.toFixed(1), curPerWeek: curPerWeek.toFixed(1),
     }
   }, [config.pace, remaining])
 
   // ── First unwatched ──
   const nextUpId = useMemo(
-    () => listTitles.find(t => !watched.has(t.id) && !t.locked)?.id,
-    [listTitles, watched]
+    () => listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers))?.id,
+    [listTitles, watched, lockPins, unlockedTiers]
   )
 
   // ── Filtered list ──
@@ -787,41 +727,73 @@ export default function App() {
     })
   }, [filter, search, listTitles, watched])
 
-  // ── Profile gate ──
-  function handleProfileComplete(prof) {
-    setProfile(prof)
-    saveJSON(SK_PROFILE, prof)
+  // ── Unwatched + unlocked titles for randomizer wheel ──
+  const wheelTitles = useMemo(
+    () => listTitles.filter(t => !watched.has(t.id) && !t.comingSoon && !isTitleLocked(t.id, lockPins, unlockedTiers)),
+    [listTitles, watched, lockPins, unlockedTiers]
+  )
+
+  // ── Lock PIN helpers ──
+  function handleUnlockRequest(tierKey) {
+    const pin = lockPins[tierKey]
+    if (!pin) return // no PIN set → tier not locked
+    setPinModal({ tierKey, mode: 'verify' })
   }
 
-  function handleProfileUpdate(prof) {
-    setProfile(prof)
-    saveJSON(SK_PROFILE, prof)
+  function handlePinVerified(tierKey) {
+    setUnlockedTiers(prev => new Set([...prev, tierKey]))
+    setPinModal(null)
   }
 
-  function handleConfigUpdate(cfg) {
-    setConfig(cfg)
-    saveJSON(SK_CONFIG, cfg)
+  function handlePinSetup(tierKey, newPin) {
+    setLockPins(prev => ({ ...prev, [tierKey]: newPin }))
+    setPinModal(null)
   }
 
-  function handleResetOnboarding() {
-    setShowProfile(false)
-    saveJSON(SK_ONBOARDED, false)
-    setOnboarded(false)
+  function handleLockDisable(tierKey) {
+    // Require current PIN to disable (re-open verify, then on success clear)
+    const pin = lockPins[tierKey]
+    if (!pin) { setLockPins(prev => ({ ...prev, [tierKey]: null })); return }
+    setPinModal({ tierKey, mode: 'verify', onSuccessOverride: () => {
+      setLockPins(prev => ({ ...prev, [tierKey]: null }))
+      setPinModal(null)
+    }})
   }
+
+  // ── Planner helpers ──
+  function handleScheduleTitle(titleId, dateStr) {
+    setPlanner(prev => {
+      const next = { ...prev }
+      if (dateStr) next[titleId] = dateStr
+      else delete next[titleId]
+      return next
+    })
+  }
+
+  // ── Profile / onboarding handlers ──
+  function handleProfileComplete(prof) { setProfile(prof); saveJSON(SK_PROFILE, prof) }
+  function handleProfileUpdate(prof)   { setProfile(prof); saveJSON(SK_PROFILE, prof) }
+  function handleConfigUpdate(cfg)     { setConfig(cfg);   saveJSON(SK_CONFIG, cfg) }
+  function handleResetOnboarding()     { setShowProfile(false); saveJSON(SK_ONBOARDED, false); setOnboarded(false) }
 
   // ── Random pick ──
-  function handleRandomPick() {
-    const unwatched = listTitles.filter(t => !watched.has(t.id) && !t.locked)
+  function handleRandomPick(pickedTitle) {
+    if (pickedTitle) {
+      // called from wheel with a specific pick
+      setRandomPickId(pickedTitle.id)
+      setShowWheel(false)
+      return
+    }
+    // fallback: pick without wheel
+    const unwatched = wheelTitles
     if (!unwatched.length) return
     const pick = unwatched[Math.floor(Math.random() * unwatched.length)]
-    setRandomPickId(prev => (prev === pick.id ? null : null)) // force re-trigger scroll
+    setRandomPickId(prev => prev === pick.id ? null : null)
     requestAnimationFrame(() => setRandomPickId(pick.id))
   }
 
   // ── Rating + notes handlers ──
-  function handleRate(id, stars) {
-    setRatings(prev => { const next = { ...prev, [id]: stars }; return next })
-  }
+  function handleRate(id, stars)   { setRatings(prev => ({ ...prev, [id]: stars })) }
   function handleSaveNote(id, text) {
     setNotes(prev => {
       const next = { ...prev }
@@ -830,51 +802,82 @@ export default function App() {
     })
   }
 
-  if (!profile) {
-    return <ProfileSetup onComplete={handleProfileComplete}/>
-  }
+  // ── Gates ──
+  if (!profile) return <ProfileSetup onComplete={handleProfileComplete}/>
 
-  // ── Onboarding gate ──
   function handleOnboardingComplete(cfg) {
-    setConfig(cfg)
-    saveJSON(SK_CONFIG, cfg)
-    saveJSON(SK_ONBOARDED, true)
-    setOnboarded(true)
+    setConfig(cfg); saveJSON(SK_CONFIG, cfg)
+    saveJSON(SK_ONBOARDED, true); setOnboarded(true)
   }
-
-  if (!onboarded) {
-    return <Onboarding onComplete={handleOnboardingComplete}/>
-  }
+  if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete}/>
 
   const unlockedAchievements = Object.values(achievements).filter(a => a.unlocked).length
+
+  // ── Detail modal title ──
+  const detailTitle = detailModalId ? TITLES.find(t => t.id === detailModalId) : null
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
       {/* ── TOAST ── */}
       {currentToast && (
-        <AchievementToast
-          achievementId={currentToast}
-          onDone={() => setCurrentToast(null)}
-        />
+        <AchievementToast achievementId={currentToast} onDone={() => setCurrentToast(null)}/>
       )}
 
       {/* ── COMPLETION MODAL ── */}
       {showCompletion && (
-        <CompletionModal
-          config={config}
-          watchedCount={listWatchedCount}
-          achievementsUnlocked={unlockedAchievements}
-          onClose={() => setShowCompletion(false)}
-        />
+        <CompletionModal config={config} watchedCount={listWatchedCount}
+          achievementsUnlocked={unlockedAchievements} onClose={() => setShowCompletion(false)}/>
       )}
 
       {/* ── SETTINGS MODAL ── */}
       {showSettings && (
-        <SettingsModal
-          config={config}
+        <SettingsModal config={config}
           onUpdate={cfg => { setConfig(cfg); saveJSON(SK_CONFIG, cfg) }}
-          onClose={() => setShowSettings(false)}
+          onClose={() => setShowSettings(false)}/>
+      )}
+
+      {/* ── PIN MODAL ── */}
+      {pinModal && (
+        <PinModal
+          mode={pinModal.mode}
+          tierKey={pinModal.tierKey}
+          currentPin={lockPins[pinModal.tierKey]}
+          onSuccess={(pin) => {
+            if (pinModal.onSuccessOverride) {
+              pinModal.onSuccessOverride()
+            } else if (pinModal.mode === 'verify') {
+              handlePinVerified(pinModal.tierKey)
+            } else {
+              handlePinSetup(pinModal.tierKey, pin)
+            }
+          }}
+          onCancel={() => setPinModal(null)}
+        />
+      )}
+
+      {/* ── TITLE DETAIL MODAL ── */}
+      {detailTitle && (
+        <TitleDetailModal
+          title={detailTitle}
+          isWatched={watched.has(detailTitle.id)}
+          rating={ratings[detailTitle.id]}
+          note={notes[detailTitle.id]}
+          isLocked={isTitleLocked(detailTitle.id, lockPins, unlockedTiers)}
+          onToggle={toggle}
+          onRate={handleRate}
+          onSaveNote={handleSaveNote}
+          onClose={() => setDetailModalId(null)}
+          onUnlockRequest={(tierKey) => { setDetailModalId(null); handleUnlockRequest(tierKey) }}
+        />
+      )}
+
+      {/* ── RANDOMIZER WHEEL ── */}
+      {showWheel && (
+        <RandomizerWheel
+          titles={wheelTitles}
+          onPick={pickedTitle => handleRandomPick(pickedTitle)}
+          onClose={() => setShowWheel(false)}
         />
       )}
 
@@ -883,19 +886,15 @@ export default function App() {
         <ProfilePage
           profile={profile}
           config={config}
-          stats={{
-            watchedCount:         listWatchedCount,
-            total,
-            remaining,
-            pct,
-            watchHistory,
-            loginDates,
-            unlockedAchievements,
-          }}
+          stats={{ watchedCount: listWatchedCount, total, remaining, pct, watchHistory, loginDates, unlockedAchievements }}
+          lockPins={lockPins}
           onUpdateProfile={handleProfileUpdate}
           onUpdateConfig={handleConfigUpdate}
           onClose={() => setShowProfile(false)}
           onResetOnboarding={handleResetOnboarding}
+          onSetupLock={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
+          onDisableLock={handleLockDisable}
+          onChangeLockPin={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
         />
       )}
 
@@ -906,16 +905,6 @@ export default function App() {
           currentRating={ratings[ratingModalId]}
           onRate={stars => handleRate(ratingModalId, stars)}
           onDismiss={() => setRatingModalId(null)}
-        />
-      )}
-
-      {/* ── NOTES MODAL ── */}
-      {notesModalId && (
-        <NotesModal
-          titleName={TITLES.find(t => t.id === notesModalId)?.title ?? ''}
-          currentNote={notes[notesModalId]}
-          onSave={text => handleSaveNote(notesModalId, text)}
-          onDismiss={() => setNotesModalId(null)}
         />
       )}
 
@@ -979,10 +968,8 @@ export default function App() {
 
               {/* Progress bar */}
               <div className="h-1.5 bg-[#181818] rounded-full mb-3 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #E81C2E 0%, #ff3d4e 100%)' }}
-                />
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, background: 'linear-gradient(90deg, #E81C2E 0%, #ff3d4e 100%)' }}/>
               </div>
 
               {/* Countdown + pace row */}
@@ -994,8 +981,7 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <span className="text-[9px] uppercase tracking-widest text-[#444] font-medium">{paceInfo.label}</span>
                   <span className={`font-mono text-xs font-semibold ${
-                    paceInfo.onTrack === true ? 'text-green-400' :
-                    paceInfo.onTrack === false ? 'text-[#E81C2E]' : 'text-[#E81C2E]'
+                    paceInfo.onTrack === true ? 'text-green-400' : 'text-[#E81C2E]'
                   }`}>{paceInfo.dateStr}</span>
                   {paceInfo.onTrack !== null && (
                     <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded ${
@@ -1049,24 +1035,33 @@ export default function App() {
               </div>
             ) : (
               <ul className="space-y-1.5">
-                {visible.map(t => (
-                  <TitleCard
-                    key={t.id}
-                    title={t}
-                    isWatched={watched.has(t.id)}
-                    isNextUp={t.id === nextUpId}
-                    onToggle={toggle}
-                    rating={ratings[t.id]}
-                    hasNote={!!notes[t.id]}
-                    onLongPress={() => setNotesModalId(t.id)}
-                    isRandomPick={t.id === randomPickId}
-                  />
-                ))}
+                {visible.map(t => {
+                  const isLocked  = isTitleLocked(t.id, lockPins, unlockedTiers)
+                  const lockKey   = isLocked ? getPrimaryLock(t.id) : null
+                  const lockTier  = lockKey  ? LOCK_TIERS[lockKey] : null
+                  const isPlanned = !!planner[t.id]
+                  return (
+                    <TitleCard
+                      key={t.id}
+                      title={t}
+                      isWatched={watched.has(t.id)}
+                      isNextUp={t.id === nextUpId}
+                      onToggle={toggle}
+                      onOpenDetail={() => setDetailModalId(t.id)}
+                      rating={ratings[t.id]}
+                      hasNote={!!notes[t.id]}
+                      isRandomPick={t.id === randomPickId}
+                      isLocked={isLocked}
+                      lockTier={lockTier}
+                      isPlanned={isPlanned}
+                    />
+                  )
+                })}
               </ul>
             )}
           </main>
 
-          {/* ── Random Pick floating button ── */}
+          {/* ── Random Pick / Wheel floating button ── */}
           <div className="fixed bottom-20 right-4 z-20 flex flex-col items-end gap-2">
             {randomPickId && (() => {
               const pick = TITLES.find(t => t.id === randomPickId)
@@ -1078,22 +1073,16 @@ export default function App() {
                   <p className="text-[9px] text-[#F5C518] uppercase tracking-widest mb-1">🎲 Random Pick</p>
                   <p className="text-white text-xs font-medium leading-snug line-clamp-2">{pick.title}</p>
                   <div className="flex gap-2 mt-2.5">
-                    <button
-                      onClick={handleRandomPick}
-                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors"
-                    >
+                    <button onClick={() => handleRandomPick(null)}
+                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors">
                       Skip
                     </button>
-                    <button
-                      onClick={() => { toggle(pick.id); setRandomPickId(null) }}
-                      className="flex-1 text-[10px] text-[#E81C2E] border border-[#E81C2E]/30 rounded-lg py-1 hover:bg-[#E81C2E]/10 transition-colors"
-                    >
+                    <button onClick={() => { toggle(pick.id); setRandomPickId(null) }}
+                      className="flex-1 text-[10px] text-[#E81C2E] border border-[#E81C2E]/30 rounded-lg py-1 hover:bg-[#E81C2E]/10 transition-colors">
                       Watch!
                     </button>
-                    <button
-                      onClick={() => setRandomPickId(null)}
-                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors"
-                    >
+                    <button onClick={() => setRandomPickId(null)}
+                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors">
                       ✕
                     </button>
                   </div>
@@ -1101,13 +1090,13 @@ export default function App() {
               ) : null
             })()}
             <button
-              onClick={handleRandomPick}
-              className="w-13 h-13 w-[52px] h-[52px] rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-110 active:scale-95"
+              onClick={() => setShowWheel(true)}
+              className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-110 active:scale-95"
               style={{
                 background: 'linear-gradient(135deg, #E81C2E 0%, #b01020 100%)',
                 boxShadow: '0 0 20px rgba(232,28,46,0.4)',
               }}
-              title="Random Pick"
+              title="Spin the Randomizer Wheel"
             >
               🎲
             </button>
@@ -1119,12 +1108,8 @@ export default function App() {
       {/* ACHIEVEMENTS TAB                                                        */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'achievements' && (
-        <Achievements
-          achievements={achievements}
-          watchHistory={watchHistory}
-          loginDates={loginDates}
-          watched={watched}
-        />
+        <Achievements achievements={achievements} watchHistory={watchHistory}
+          loginDates={loginDates} watched={watched}/>
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
@@ -1142,10 +1127,13 @@ export default function App() {
           reminder={reminder}
           onSetReminder={setReminder}
           profile={profile}
+          planner={planner}
+          onScheduleTitle={handleScheduleTitle}
+          titles={listTitles}
         />
       )}
 
-      {/* ── Bottom nav (4 tabs) ── */}
+      {/* ── Bottom nav ── */}
       <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#111111', borderTop: '1px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto flex">
           {[
@@ -1158,7 +1146,7 @@ export default function App() {
               ),
             },
             {
-              id: 'achievements', label: 'ACHIEVEMENTS', badge: unlockedAchievements,
+              id: 'achievements', label: 'AWARDS', badge: unlockedAchievements,
               icon: (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"/>
@@ -1174,8 +1162,7 @@ export default function App() {
               ),
             },
             {
-              id: 'profile', label: 'PROFILE', badge: null,
-              isProfileTab: true,
+              id: 'profile', label: 'PROFILE', badge: null, isProfileTab: true,
               icon: (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
@@ -1188,12 +1175,8 @@ export default function App() {
               <button
                 key={tab.id}
                 onClick={() => {
-                  if (tab.isProfileTab) {
-                    setShowProfile(true)
-                  } else {
-                    setActiveTab(tab.id)
-                    setShowProfile(false)
-                  }
+                  if (tab.isProfileTab) { setShowProfile(true) }
+                  else { setActiveTab(tab.id); setShowProfile(false) }
                 }}
                 className={[
                   'flex-1 flex flex-col items-center gap-1 py-3 transition-all relative',

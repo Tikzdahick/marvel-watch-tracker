@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from 'react'
 import { calcStreak, calcLongestStreak } from './data/achievements.js'
+import { LOCK_TIERS, LOCK_TIER_ORDER } from './data/locks.js'
 
 const PRESET_AVATARS = [
   { emoji: '🤖', label: 'Iron Man' },
@@ -57,10 +58,14 @@ export default function ProfilePage({
   profile,
   config,
   stats,          // { watchedCount, total, remaining, pct, watchHistory, loginDates, unlockedAchievements }
+  lockPins,       // { pg13: '1234'|null, ... }
   onUpdateProfile,
   onUpdateConfig,
   onClose,
   onResetOnboarding,
+  onSetupLock,    // (tierKey) → void — open PIN setup modal
+  onDisableLock,  // (tierKey) → void — disable a lock (verifies current PIN first)
+  onChangeLockPin,// (tierKey) → void — change a PIN
 }) {
   const [editing, setEditing] = useState(false)
 
@@ -328,6 +333,53 @@ export default function ProfilePage({
             </div>
           </div>
         )}
+
+        {/* ── Content Locks ── */}
+        <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+          <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Content Locks</div>
+          <p className="text-[11px] text-[#444] mb-3 leading-relaxed">
+            Set a 4-digit PIN to restrict access to age-rated content. Unlocking in a session carries through until you close the app.
+          </p>
+          <div className="space-y-0">
+            {LOCK_TIER_ORDER.map(tierKey => {
+              const tier    = LOCK_TIERS[tierKey]
+              const hasPin  = !!(lockPins?.[tierKey])
+              return (
+                <div key={tierKey} className="flex items-center justify-between py-3 border-b border-[#1a1a1a] last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${tier.bgColor} border ${tier.borderColor}`}>
+                      {tier.emoji}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-white">{tier.label}</div>
+                      <div className="text-[10px] text-[#555]">{tier.description}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasPin && (
+                      <button
+                        onClick={() => onChangeLockPin?.(tierKey)}
+                        className="text-[10px] text-[#555] hover:text-white border border-[#222] px-2.5 py-1 rounded-lg transition-colors"
+                      >
+                        Change
+                      </button>
+                    )}
+                    <button
+                      onClick={() => hasPin ? onDisableLock?.(tierKey) : onSetupLock?.(tierKey)}
+                      className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border transition-all ${
+                        hasPin
+                          ? 'bg-red-950/50 border-[#E81C2E]/30 text-[#E81C2E]'
+                          : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
+                      }`}
+                    >
+                      {hasPin ? 'ON' : 'OFF'}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {/* ── Reset Onboarding ── */}
         <div className="pt-2 border-t border-[#161616]">

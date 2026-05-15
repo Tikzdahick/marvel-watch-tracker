@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import {
   getTitlesForListSize,
   IDS_BLADE, IDS_XMEN_ERA, IDS_INFINITY_SAGA, IDS_DEFENDERS_SAGA, IDS_MULTIVERSE_SAGA,
@@ -147,9 +147,305 @@ async function downloadShareCard({ profile, watchedCount, totalHours, pct, watch
 
 // ── Main component ────────────────────────────────────────────────────────────
 
+// ── Marvel Wrapped (monthly stats card) ──────────────────────────────────────
+function MarvelWrapped({ watched, watchHistory, ratings, listTitles, profile }) {
+  const [shared, setShared] = useState(false)
+
+  const now   = new Date()
+  const month = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
+  // Titles watched this month
+  const monthKey = now.toISOString().slice(0, 7) // 'YYYY-MM'
+  const monthWatched = useMemo(() => {
+    const ids = new Set()
+    Object.entries(watchHistory || {}).forEach(([date, titleIds]) => {
+      if (date.startsWith(monthKey)) titleIds.forEach(id => ids.add(id))
+    })
+    return ids
+  }, [watchHistory, monthKey])
+
+  const monthWatchedTitles = useMemo(
+    () => listTitles.filter(t => monthWatched.has(t.id)),
+    [listTitles, monthWatched]
+  )
+
+  const monthHours = useMemo(
+    () => Math.floor(monthWatchedTitles.reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60),
+    [monthWatchedTitles]
+  )
+
+  // Best binge day this month
+  const monthBinge = useMemo(() => {
+    const entries = Object.entries(watchHistory || {}).filter(([d]) => d.startsWith(monthKey))
+    if (!entries.length) return null
+    const [date, ids] = entries.sort((a, b) => b[1].length - a[1].length)[0]
+    return { date, count: ids.length }
+  }, [watchHistory, monthKey])
+
+  // Favourite era this month
+  const monthEra = useMemo(() => {
+    const ERAS = [
+      { label: 'Blade Trilogy',   ids: IDS_BLADE },
+      { label: 'X-Men Era',        ids: IDS_XMEN_ERA },
+      { label: 'Infinity Saga',    ids: IDS_INFINITY_SAGA },
+      { label: 'Defenders Saga',   ids: IDS_DEFENDERS_SAGA },
+      { label: 'Multiverse Saga',  ids: IDS_MULTIVERSE_SAGA },
+    ]
+    const counts = ERAS.map(e => ({
+      label: e.label,
+      count: monthWatchedTitles.filter(t => e.ids.has(t.id)).length,
+    }))
+    const top = counts.sort((a, b) => b.count - a.count)[0]
+    return top?.count > 0 ? top.label : null
+  }, [monthWatchedTitles])
+
+  // Top rated this month
+  const monthTopRated = useMemo(() => {
+    return monthWatchedTitles
+      .filter(t => ratings[t.id] != null)
+      .sort((a, b) => (ratings[b.id] || 0) - (ratings[a.id] || 0))[0]
+  }, [monthWatchedTitles, ratings])
+
+  async function handleShare() {
+    const text = [
+      `🎬 MARVEL WRAPPED — ${month}`,
+      `👤 ${profile?.name ?? 'Marvel Fan'}`,
+      '',
+      `✅ ${monthWatched.size} titles watched`,
+      `⏱ ${monthHours} hours`,
+      monthEra  ? `🏆 Favourite era: ${monthEra}` : '',
+      monthBinge ? `🍿 Best binge: ${monthBinge.count} in a day` : '',
+      monthTopRated ? `⭐ Top pick: ${monthTopRated.title}` : '',
+      '',
+      '#MarvelWatchTracker #MarvelWrapped',
+    ].filter(Boolean).join('\n')
+
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Marvel Wrapped', text }) }
+      else { await navigator.clipboard.writeText(text); setShared(true); setTimeout(() => setShared(false), 2500) }
+    } catch {}
+  }
+
+  return (
+    <div
+      className="rounded-2xl border border-[#F5C518]/25 p-5 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #0f0800 0%, #0a0a0a 60%, #0a000a 100%)' }}
+    >
+      {/* Decorative glow */}
+      <div className="absolute inset-0 pointer-events-none" style={{
+        background: 'radial-gradient(ellipse at 80% 0%, rgba(245,197,24,0.07) 0%, transparent 60%)'
+      }}/>
+      <div className="relative">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <div className="text-[10px] text-[#F5C518] uppercase tracking-widest font-bold">Marvel Wrapped</div>
+            <div className="text-[11px] text-[#555]">{month}</div>
+          </div>
+          <div
+            className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg shadow-[0_0_12px_rgba(245,197,24,0.3)]"
+            style={{ background: 'linear-gradient(135deg, #F5C518, #d4a017)' }}
+          >
+            <span className="text-black">M</span>
+          </div>
+        </div>
+
+        {monthWatched.size === 0 ? (
+          <div className="text-center py-4">
+            <div className="text-[#333] text-sm">No titles watched this month yet.</div>
+            <div className="text-[#222] text-xs mt-1">Start watching to see your Wrapped!</div>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-3">
+                <div className="font-bebas text-3xl text-[#E81C2E] leading-none">{monthWatched.size}</div>
+                <div className="text-[9px] text-[#555] uppercase tracking-widest">Titles</div>
+              </div>
+              <div className="bg-[#0f0f0f] border border-[#1a1a1a] rounded-xl p-3">
+                <div className="font-bebas text-3xl text-[#F5C518] leading-none">{monthHours}h</div>
+                <div className="text-[9px] text-[#555] uppercase tracking-widest">Hours</div>
+              </div>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {monthEra && (
+                <div className="flex items-center gap-2 py-2 border-b border-[#1a1a1a]">
+                  <span className="text-base">🏆</span>
+                  <div>
+                    <div className="text-[10px] text-[#555] uppercase tracking-widest">Favourite Era</div>
+                    <div className="text-sm text-white font-medium">{monthEra}</div>
+                  </div>
+                </div>
+              )}
+              {monthBinge && (
+                <div className="flex items-center gap-2 py-2 border-b border-[#1a1a1a]">
+                  <span className="text-base">🍿</span>
+                  <div>
+                    <div className="text-[10px] text-[#555] uppercase tracking-widest">Best Binge Day</div>
+                    <div className="text-sm text-white font-medium">
+                      {monthBinge.count} titles on {new Date(monthBinge.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {monthTopRated && (
+                <div className="flex items-center gap-2 py-2">
+                  <span className="text-base">⭐</span>
+                  <div>
+                    <div className="text-[10px] text-[#555] uppercase tracking-widest">Top Rated</div>
+                    <div className="text-sm text-white font-medium">{monthTopRated.title}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={handleShare}
+              className="w-full py-3 rounded-xl font-bebas text-lg tracking-widest text-white transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #F5C518 0%, #d4a017 100%)',
+                color: '#000',
+                boxShadow: shared ? '0 0 20px rgba(245,197,24,0.5)' : '0 0 12px rgba(245,197,24,0.2)',
+              }}
+            >
+              {shared ? '✓ COPIED!' : '📱 SHARE WRAPPED'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Watch Planner ─────────────────────────────────────────────────────────────
+function WatchPlanner({ planner, onScheduleTitle, titles }) {
+  const today     = new Date().toISOString().slice(0, 10)
+  const [adding,  setAdding]  = useState(false)
+  const [pickId,  setPickId]  = useState('')
+  const [pickDate, setPickDate] = useState(today)
+
+  // Scheduled entries sorted by date
+  const scheduled = useMemo(() => {
+    return Object.entries(planner)
+      .map(([idStr, date]) => {
+        const id    = Number(idStr)
+        const title = titles.find(t => t.id === id)
+        return title ? { id, date, title } : null
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.date.localeCompare(b.date))
+  }, [planner, titles])
+
+  // Titles not yet planned
+  const unplanned = useMemo(
+    () => titles.filter(t => !planner[t.id] && !t.comingSoon),
+    [titles, planner]
+  )
+
+  function handleAdd() {
+    if (!pickId || !pickDate) return
+    onScheduleTitle(Number(pickId), pickDate)
+    setPickId('')
+    setPickDate(today)
+    setAdding(false)
+  }
+
+  return (
+    <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-[10px] text-[#555] uppercase tracking-widest">📅 Watch Planner</div>
+        <button
+          onClick={() => setAdding(v => !v)}
+          className="text-[10px] font-semibold px-3 py-1.5 rounded-lg border border-[#222] text-[#555] hover:text-white transition-colors"
+        >
+          {adding ? 'Cancel' : '+ Add'}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div className="bg-[#161616] border border-[#222] rounded-xl p-3 mb-3 space-y-2">
+          <select
+            value={pickId}
+            onChange={e => setPickId(e.target.value)}
+            className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#E81C2E]/50"
+          >
+            <option value="">Select a title…</option>
+            {unplanned.map(t => (
+              <option key={t.id} value={t.id}>{t.title}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={pickDate}
+              min={today}
+              onChange={e => setPickDate(e.target.value)}
+              className="flex-1 bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#E81C2E]/50"
+            />
+            <button
+              onClick={handleAdd}
+              disabled={!pickId || !pickDate}
+              className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#E81C2E] text-white disabled:opacity-30 hover:shadow-[0_0_10px_rgba(232,28,46,0.4)] transition-all"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Scheduled list */}
+      {scheduled.length === 0 ? (
+        <div className="text-center py-4">
+          <div className="text-[#333] text-sm">No titles scheduled yet.</div>
+          <div className="text-[#222] text-xs mt-1">Tap + Add to schedule your next watch.</div>
+        </div>
+      ) : (
+        <ul className="space-y-1.5">
+          {scheduled.map(({ id, date, title }) => {
+            const dt     = new Date(date + 'T12:00')
+            const isPast = date < today
+            const isToday = date === today
+            return (
+              <li key={id} className={`flex items-center gap-3 py-2 px-3 rounded-xl border transition-all ${
+                isToday ? 'bg-[#180000] border-[#E81C2E]/30'
+                : isPast ? 'bg-[#0d0d0d] border-[#161616] opacity-50'
+                : 'bg-[#111] border-[#1c1c1c]'
+              }`}>
+                <div className="flex flex-col items-center w-10 flex-shrink-0">
+                  <span className="text-[9px] uppercase tracking-widest text-[#555]">
+                    {dt.toLocaleDateString('en-US', { month: 'short' })}
+                  </span>
+                  <span className={`font-bebas text-xl leading-none ${isToday ? 'text-[#E81C2E]' : 'text-[#888]'}`}>
+                    {dt.getDate()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white truncate font-medium">{title.title}</p>
+                  {isToday && <p className="text-[10px] text-[#E81C2E]">Today!</p>}
+                </div>
+                <button
+                  onClick={() => onScheduleTitle(id, null)}
+                  className="text-[#333] hover:text-[#E81C2E] transition-colors text-lg leading-none"
+                  title="Remove from planner"
+                >
+                  ×
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function StatsPage({
   watched, watchHistory, loginDates, config, ratings,
   goal, onSetGoal, reminder, onSetReminder, profile,
+  planner, onScheduleTitle, titles,
 }) {
   const [goalInput,    setGoalInput]    = useState(String(goal.weekly))
   const [reminderTime, setReminderTime] = useState(reminder.time)
@@ -567,6 +863,24 @@ export default function StatsPage({
             </p>
           )}
         </div>
+
+        {/* ── Marvel Wrapped ── */}
+        <MarvelWrapped
+          watched={watched}
+          watchHistory={watchHistory}
+          ratings={ratings}
+          listTitles={listTitles}
+          profile={profile}
+        />
+
+        {/* ── Watch Planner ── */}
+        {planner !== undefined && onScheduleTitle && titles && (
+          <WatchPlanner
+            planner={planner}
+            onScheduleTitle={onScheduleTitle}
+            titles={titles}
+          />
+        )}
 
         {/* ── Shareable card ── */}
         <div className="grid grid-cols-2 gap-3 pb-4">
