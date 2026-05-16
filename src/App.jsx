@@ -11,7 +11,15 @@ import FriendsPage from './FriendsPage.jsx'
 import CommunityFeed from './CommunityFeed.jsx'
 import AuthScreen from './AuthScreen.jsx'
 import HomePage from './HomePage.jsx'
+import TierPromptModal from './TierPromptModal.jsx'
+import TierListPage from './TierListPage.jsx'
+import TriviaModal, { getTodayDateStr } from './TriviaModal.jsx'
+import WatchPartyModal from './WatchPartyModal.jsx'
+import MoodPickerModal from './MoodPickerModal.jsx'
 import { AvatarDisplay } from './AvatarDisplay.jsx'
+import { getDailyQuestion } from './data/trivia.js'
+import { MOODS, getRecommendations } from './data/recommendations.js'
+import { getDailyFact } from './data/facts.js'
 import { useAuth, SUPABASE_ENABLED } from './hooks/useAuth.js'
 import { ERAS, ERA_FOR_ID, getEraForId } from './data/eras.js'
 import {
@@ -30,6 +38,13 @@ import { fetchFriendships } from './lib/supabaseHelpers.js'
 const SK_CONFIG       = 'mvt-config'
 const SK_WATCHED      = 'mvt-watched-v1'
 const SK_HISTORY      = 'mvt-watch-history'
+const SK_TIERS        = 'mvt-tiers'
+const SK_IN_PROGRESS  = 'mvt-in-progress'
+const SK_REWATCHES    = 'mvt-rewatches'
+const SK_SPOILER_FREE = 'mvt-spoiler-free'
+const SK_TRIVIA       = 'mvt-trivia'
+const SK_PARTIES      = 'mvt-parties'
+const SK_TAGGED       = 'mvt-tagged-watches'
 const SK_LOGIN        = 'mvt-login-dates'
 const SK_ACHIEVEMENTS = 'mvt-achievements'
 const SK_ONBOARDED    = 'mvt-onboarded'
@@ -204,6 +219,7 @@ function EraHeader({ era, watchedCount, totalCount, onMarkAll, collapsed, onTogg
 function TitleCard({
   title, isWatched, isNextUp, onOpenDetail, rating, hasNote,
   isRandomPick, isLocked, lockTier, isPlanned,
+  inProgress, tier, rewatchCount,
 }) {
   const comingSoon = !!title.comingSoon
 
@@ -261,6 +277,26 @@ function TitleCard({
               style={{ color: lockTier.color }}
             >
               {lockTier.emoji} {lockTier.rating}
+            </span>
+          )}
+          {inProgress && !isWatched && (
+            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border bg-blue-950 text-blue-400 border-blue-400/30 font-bold tracking-widest">
+              ▶ S{inProgress.season}E{inProgress.episode}
+            </span>
+          )}
+          {tier && isWatched && (
+            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border font-bold tracking-widest"
+              style={{
+                background: { S:'rgba(245,197,24,0.12)', A:'rgba(34,197,94,0.12)', B:'rgba(96,165,250,0.12)', C:'rgba(249,115,22,0.12)', D:'rgba(232,28,46,0.12)' }[tier],
+                color:       { S:'#F5C518', A:'#22c55e', B:'#60a5fa', C:'#f97316', D:'#E81C2E' }[tier],
+                borderColor: { S:'rgba(245,197,24,0.3)', A:'rgba(34,197,94,0.3)', B:'rgba(96,165,250,0.3)', C:'rgba(249,115,22,0.3)', D:'rgba(232,28,46,0.3)' }[tier],
+              }}>
+              {tier}
+            </span>
+          )}
+          {rewatchCount > 0 && (
+            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border bg-[#F5C518]/10 text-[#F5C518] border-[#F5C518]/25 font-bold tracking-widest">
+              🔄×{rewatchCount + 1}
             </span>
           )}
         </div>
@@ -429,7 +465,7 @@ function CompletionModal({ config, watchedCount, achievementsUnlocked, onClose }
 }
 
 // ── Settings Modal ────────────────────────────────────────────────────────────
-function SettingsModal({ config, onUpdate, onClose }) {
+function SettingsModal({ config, onUpdate, onClose, spoilerFree, onToggleSpoilerFree }) {
   const [listSize, setListSize] = useState(config.listSize)
   const [pace, setPace]         = useState(config.pace)
 
@@ -481,6 +517,29 @@ function SettingsModal({ config, onUpdate, onClose }) {
             ))}
           </div>
         </div>
+        {/* Spoiler Free toggle */}
+        <div className="mb-5">
+          <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2">Spoiler Free Mode</div>
+          <button
+            onClick={onToggleSpoilerFree}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all flex items-center justify-between px-4 ${
+              spoilerFree
+                ? 'bg-[#E81C2E]/10 border-[#E81C2E]/40 text-[#E81C2E]'
+                : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
+            }`}
+          >
+            <span>{spoilerFree ? '🙈 Enabled — descriptions hidden' : '👁 Disabled — show all details'}</span>
+            <span className={`w-8 h-4 rounded-full flex-shrink-0 transition-all relative ${spoilerFree ? 'bg-[#E81C2E]' : 'bg-[#333]'}`}>
+              <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${spoilerFree ? 'left-4' : 'left-0.5'}`}/>
+            </span>
+          </button>
+          {spoilerFree && (
+            <p className="text-[10px] text-[#444] mt-1.5 leading-relaxed">
+              Synopses, facts, and characters are blurred until you've marked a title watched.
+            </p>
+          )}
+        </div>
+
         <button
           onClick={() => { onUpdate({ listSize, pace }); onClose() }}
           className="w-full py-3.5 rounded-xl font-bebas text-xl tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_16px_rgba(232,28,46,0.4)] transition-all"
@@ -629,6 +688,31 @@ export default function App() {
   // collapsedEras: Set of era keys the user has collapsed
   const [collapsedEras,  setCollapsedEras]  = useState(() => new Set())
 
+  // ── New feature state ──
+  // Tiers: { [titleId]: 'S'|'A'|'B'|'C'|'D' }
+  const [tiers,         setTiers]         = useState(() => loadJSON(SK_TIERS, {}))
+  // showTierPrompt: titleId after watching, or null
+  const [showTierPrompt, setShowTierPrompt] = useState(null)
+  // showTierList: show full tier list page
+  const [showTierList,   setShowTierList]   = useState(false)
+  // inProgress: { [titleId]: { season, episode } }
+  const [inProgress,    setInProgress]    = useState(() => loadJSON(SK_IN_PROGRESS, {}))
+  // rewatches: { [titleId]: string[] }
+  const [rewatches,     setRewatches]     = useState(() => loadJSON(SK_REWATCHES, {}))
+  // spoilerFree: boolean
+  const [spoilerFree,   setSpoilerFree]   = useState(() => loadJSON(SK_SPOILER_FREE, false))
+  // trivia state
+  const [triviaState,   setTriviaState]   = useState(() => loadJSON(SK_TRIVIA, { score: 0, streak: 0, lastDate: null, answers: {} }))
+  const [showTrivia,    setShowTrivia]    = useState(false)
+  // watch parties
+  const [parties,       setParties]       = useState(() => loadJSON(SK_PARTIES, []))
+  const [showWatchParty, setShowWatchParty] = useState(false)
+  // mood picker
+  const [activeMood,    setActiveMood]    = useState(null)
+  const [showMoodPicker, setShowMoodPicker] = useState(false)
+  // tagged watches: { [titleId]: string[] (friendIds) }
+  const [taggedWatches, setTaggedWatches] = useState(() => loadJSON(SK_TAGGED, {}))
+
   const shownCompletion = useRef(false)
   const isInitialMount  = useRef(true)
 
@@ -654,6 +738,13 @@ export default function App() {
   useEffect(() => { saveJSON(SK_REMINDER, reminder) }, [reminder])
   useEffect(() => { saveJSON(SK_LOCK_PINS, lockPins) }, [lockPins])
   useEffect(() => { saveJSON(SK_PLANNER,   planner) },  [planner])
+  useEffect(() => { saveJSON(SK_TIERS,        tiers) },        [tiers])
+  useEffect(() => { saveJSON(SK_IN_PROGRESS,  inProgress) },   [inProgress])
+  useEffect(() => { saveJSON(SK_REWATCHES,    rewatches) },    [rewatches])
+  useEffect(() => { saveJSON(SK_SPOILER_FREE, spoilerFree) },  [spoilerFree])
+  useEffect(() => { saveJSON(SK_TRIVIA,       triviaState) },  [triviaState])
+  useEffect(() => { saveJSON(SK_PARTIES,      parties) },      [parties])
+  useEffect(() => { saveJSON(SK_TAGGED,       taggedWatches) },[taggedWatches])
 
   // ── Daily reminder notification ──
   useEffect(() => {
@@ -776,7 +867,10 @@ export default function App() {
     })
 
     if (isMarkingWatched) {
-      setTimeout(() => setRatingModalId(id), 150)
+      // Clear any in-progress status
+      setInProgress(prev => { const n = { ...prev }; delete n[id]; return n })
+      // Show tier prompt (skipping rating modal — rating is inside TitleDetailModal)
+      setTimeout(() => setShowTierPrompt(id), 300)
     }
   }, [runAchievementCheck, watched, lockPins, unlockedTiers])
 
@@ -926,6 +1020,77 @@ export default function App() {
     }, 600)
   }
 
+  // ── Tier handlers ──
+  function handleSetTier(id, tier) {
+    setTiers(prev => ({ ...prev, [id]: tier }))
+  }
+
+  // ── In-Progress handlers ──
+  function handleSetInProgress(id, progress) {
+    setInProgress(prev => {
+      const next = { ...prev }
+      if (progress) next[id] = progress; else delete next[id]
+      return next
+    })
+  }
+
+  // ── Rewatch handlers ──
+  function handleRewatch(id) {
+    const now = new Date().toISOString()
+    setRewatches(prev => ({ ...prev, [id]: [...(prev[id] ?? []), now] }))
+  }
+
+  // ── Tag friend on title ──
+  function handleTagFriend(titleId, friendId) {
+    setTaggedWatches(prev => {
+      const existing = prev[titleId] ?? []
+      const next = { ...prev }
+      if (existing.includes(friendId)) {
+        next[titleId] = existing.filter(id => id !== friendId)
+      } else {
+        next[titleId] = [...existing, friendId]
+      }
+      return next
+    })
+  }
+
+  // ── Trivia answer ──
+  function handleTriviaAnswer(correct) {
+    const today = getTodayDateStr()
+    setTriviaState(prev => {
+      const wasStreakYesterday = prev.lastDate
+        ? (new Date(today) - new Date(prev.lastDate)) / 86400000 <= 1
+        : false
+      return {
+        score:    prev.score + (correct ? 1 : 0),
+        streak:   correct ? (wasStreakYesterday ? prev.streak + 1 : 1) : 0,
+        lastDate: today,
+        answers:  { ...prev.answers, [today]: correct },
+      }
+    })
+  }
+
+  // ── Mood + recommendations ──
+  const moodRecommendation = useMemo(() => {
+    if (!activeMood) return null
+    const ids = getRecommendations(watched, activeMood)
+    if (!ids.length) return null
+    const t = TITLES.find(t => t.id === ids[0])
+    if (!t) return null
+    return { title: t, reason: `Matches your ${activeMood} mood` }
+  }, [activeMood, watched])
+
+  // ── Daily trivia question ──
+  const todayStr2 = getTodayDateStr()
+  const dailyQuestion = useMemo(() => {
+    try { return getDailyQuestion(todayStr2) } catch { return null }
+  }, [todayStr2])
+
+  // ── Daily fact ──
+  const dailyFact = useMemo(() => {
+    try { return getDailyFact() } catch { return null }
+  }, [])
+
   // ── Rating + notes handlers ──
   function handleRate(id, stars)   { setRatings(prev => ({ ...prev, [id]: stars })) }
   function handleSaveNote(id, text) {
@@ -986,7 +1151,10 @@ export default function App() {
       {showSettings && (
         <SettingsModal config={config}
           onUpdate={cfg => { setConfig(cfg); saveJSON(SK_CONFIG, cfg) }}
-          onClose={() => setShowSettings(false)}/>
+          onClose={() => setShowSettings(false)}
+          spoilerFree={spoilerFree}
+          onToggleSpoilerFree={() => setSpoilerFree(v => !v)}
+        />
       )}
 
       {/* ── PIN MODAL ── */}
@@ -1008,19 +1176,86 @@ export default function App() {
         />
       )}
 
+      {/* ── TIER PROMPT MODAL ── */}
+      {showTierPrompt && (
+        <TierPromptModal
+          titleName={TITLES.find(t => t.id === showTierPrompt)?.title ?? ''}
+          currentTier={tiers[showTierPrompt] ?? null}
+          onSelect={tier => { handleSetTier(showTierPrompt, tier); setShowTierPrompt(null) }}
+          onSkip={() => setShowTierPrompt(null)}
+        />
+      )}
+
+      {/* ── TIER LIST PAGE ── */}
+      {showTierList && (
+        <TierListPage
+          titles={listTitles}
+          watched={watched}
+          tiers={tiers}
+          onSetTier={handleSetTier}
+          onClose={() => setShowTierList(false)}
+        />
+      )}
+
+      {/* ── TRIVIA MODAL ── */}
+      {showTrivia && dailyQuestion && (
+        <TriviaModal
+          question={dailyQuestion}
+          triviaState={triviaState}
+          dateStr={todayStr2}
+          onAnswer={handleTriviaAnswer}
+          onClose={() => setShowTrivia(false)}
+        />
+      )}
+
+      {/* ── WATCH PARTY MODAL ── */}
+      {showWatchParty && (
+        <WatchPartyModal
+          titles={listTitles}
+          friends={[]}
+          parties={parties}
+          watched={watched}
+          onCreateParty={p => setParties(prev => [...prev, p])}
+          onDeleteParty={id => setParties(prev => prev.filter(p => p.id !== id))}
+          onClose={() => setShowWatchParty(false)}
+        />
+      )}
+
+      {/* ── MOOD PICKER ── */}
+      {showMoodPicker && (
+        <MoodPickerModal
+          moods={MOODS}
+          currentMood={activeMood}
+          recommendation={moodRecommendation}
+          onSelectMood={mood => { setActiveMood(mood); }}
+          onClearMood={() => { setActiveMood(null); setShowMoodPicker(false) }}
+          onViewTitle={tid => { setShowMoodPicker(false); setDetailModalId(tid); setActiveTab('tracker') }}
+          onClose={() => setShowMoodPicker(false)}
+        />
+      )}
+
       {/* ── TITLE DETAIL MODAL ── */}
       {detailTitle && (
         <TitleDetailModal
           title={detailTitle}
           isWatched={watched.has(detailTitle.id)}
+          inProgress={inProgress[detailTitle.id] ?? null}
           rating={ratings[detailTitle.id]}
           note={notes[detailTitle.id]}
+          rewatchDates={rewatches[detailTitle.id] ?? []}
           isLocked={isTitleLocked(detailTitle.id, lockPins, unlockedTiers)}
+          spoilerFree={spoilerFree}
+          friends={[]}
+          taggedFriends={taggedWatches[detailTitle.id] ?? []}
           onToggle={toggle}
+          onSetInProgress={handleSetInProgress}
           onRate={handleRate}
           onSaveNote={handleSaveNote}
+          onRewatch={handleRewatch}
+          onTagFriend={handleTagFriend}
           onClose={() => setDetailModalId(null)}
           onUnlockRequest={(tierKey) => { setDetailModalId(null); handleUnlockRequest(tierKey) }}
+          onOpenDetail={tid => { setDetailModalId(null); setTimeout(() => setDetailModalId(tid), 80) }}
         />
       )}
 
@@ -1083,6 +1318,14 @@ export default function App() {
           nextUp={listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers) && !t.comingSoon) ?? null}
           loginDates={loginDates}
           watchHistory={watchHistory}
+          dailyFact={dailyFact}
+          triviaState={triviaState}
+          parties={parties}
+          activeMood={activeMood}
+          onOpenMoodPicker={() => setShowMoodPicker(true)}
+          onOpenTrivia={() => setShowTrivia(true)}
+          onOpenWatchParty={() => setShowWatchParty(true)}
+          onOpenTierList={() => setShowTierList(true)}
           onNavigate={(tab) => {
             if (tab === 'profile') { setShowProfile(true) }
             else { setActiveTab(tab) }
@@ -1173,6 +1416,24 @@ export default function App() {
             </div>
           </header>
 
+          {/* ── Quick-feature chips ── */}
+          <div className="max-w-lg mx-auto px-4 pt-2 pb-0">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+              {[
+                { label: '⭐ Tiers',       onClick: () => setShowTierList(true) },
+                { label: '🎮 Trivia',      onClick: () => setShowTrivia(true) },
+                { label: '🎉 Watch Party', onClick: () => setShowWatchParty(true) },
+                { label: `😄 Mood${activeMood ? ' ●' : ''}`, onClick: () => setShowMoodPicker(true) },
+              ].map(({ label, onClick }) => (
+                <button key={label} onClick={onClick}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold bg-[#111] text-[#666] border border-[#1e1e1e] hover:text-white hover:border-[#333] transition-all"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* ── Controls ── */}
           <div className="max-w-lg mx-auto px-4 pt-3 pb-2 space-y-2.5">
             <div className="relative">
@@ -1250,6 +1511,9 @@ export default function App() {
                                 isLocked={isLocked}
                                 lockTier={lockTier}
                                 isPlanned={isPlanned}
+                                inProgress={inProgress[t.id] ?? null}
+                                tier={tiers[t.id] ?? null}
+                                rewatchCount={(rewatches[t.id] ?? []).length}
                               />
                             )
                           })}

@@ -100,7 +100,11 @@ function CountdownUnit({ value, label }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function HomePage({ profile, stats, nextUp, loginDates, watchHistory, onNavigate }) {
+export default function HomePage({
+  profile, stats, nextUp, loginDates, watchHistory, onNavigate,
+  dailyFact, triviaState, parties, activeMood,
+  onOpenMoodPicker, onOpenTrivia, onOpenWatchParty, onOpenTierList,
+}) {
   const { watchedCount, total, remaining, pct, unlockedAchievements } = stats
 
   const loginStreak  = useMemo(() => calcStreak(loginDates ?? []), [loginDates])
@@ -305,6 +309,64 @@ export default function HomePage({ profile, stats, nextUp, loginDates, watchHist
             />
           </div>
         </div>
+
+        {/* Feature quick-access */}
+        <div>
+          <div className="text-[9px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Features</div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button onClick={onOpenTierList}
+              className="flex items-center gap-3 rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
+              style={{ background: '#0f0f0f', border: '1px solid rgba(245,197,24,0.15)' }}>
+              <span className="text-xl">⭐</span>
+              <div>
+                <div className="text-white text-[13px] font-semibold">Tier List</div>
+                <div className="text-[#444] text-[10px]">Rate your watches</div>
+              </div>
+            </button>
+            <button onClick={onOpenTrivia}
+              className="flex items-center gap-3 rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
+              style={{ background: '#0f0f0f', border: `1px solid rgba(96,165,250,${triviaState?.answers?.[new Date().toISOString().slice(0,10)] !== undefined ? '0.3' : '0.1'})` }}>
+              <span className="text-xl">🎮</span>
+              <div>
+                <div className="text-white text-[13px] font-semibold">Daily Trivia</div>
+                <div className="text-[#444] text-[10px]">
+                  {triviaState?.streak > 0 ? `🔥 ${triviaState.streak}-day streak` : 'Play today\'s question'}
+                </div>
+              </div>
+            </button>
+            <button onClick={onOpenWatchParty}
+              className="flex items-center gap-3 rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
+              style={{ background: '#0f0f0f', border: '1px solid rgba(168,85,247,0.15)' }}>
+              <span className="text-xl">🎉</span>
+              <div>
+                <div className="text-white text-[13px] font-semibold">Watch Party</div>
+                <div className="text-[#444] text-[10px]">
+                  {parties?.length > 0 ? `${parties.length} scheduled` : 'Plan a viewing'}
+                </div>
+              </div>
+            </button>
+            <button onClick={onOpenMoodPicker}
+              className="flex items-center gap-3 rounded-2xl p-4 text-left transition-all active:scale-[0.97]"
+              style={{ background: '#0f0f0f', border: `1px solid ${activeMood ? 'rgba(232,28,46,0.3)' : 'rgba(255,255,255,0.06)'}` }}>
+              <span className="text-xl">😄</span>
+              <div>
+                <div className="text-white text-[13px] font-semibold">Mood Picker</div>
+                <div className="text-[#444] text-[10px]">{activeMood ? `Feeling ${activeMood}` : "What's your mood?"}</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Daily Fact */}
+        {dailyFact && (
+          <div
+            className="rounded-2xl p-4"
+            style={{ background: '#0f0f0f', border: '1px solid rgba(245,197,24,0.12)' }}
+          >
+            <div className="text-[9px] text-[#F5C518]/60 uppercase tracking-[0.3em] mb-2 font-semibold">💡 Did You Know?</div>
+            <p className="text-[#aaa] text-[13px] leading-relaxed italic">"{dailyFact.fact}"</p>
+          </div>
+        )}
 
         {/* Doomsday countdown */}
         <div

@@ -1,35 +1,43 @@
 /**
  * TitleDetailModal — full-screen title detail view.
- *
- * Covers the entire screen (z-index above the nav bar) so nothing
- * gets clipped. Slides up from the bottom.
+ * Covers entire screen (z-index above nav). Slides up from bottom.
  *
  * Props:
- *   title:           TITLES entry
- *   isWatched:       boolean
- *   rating:          1–5 | undefined
- *   note:            string | undefined
- *   isLocked:        boolean
- *   onToggle:        (id) → void
- *   onRate:          (id, stars) → void
- *   onSaveNote:      (id, text) → void
- *   onClose:         () → void
- *   onUnlockRequest: (tierKey) → void
+ *   title            TITLES entry
+ *   isWatched        boolean
+ *   inProgress       { season: number, episode: number } | null
+ *   rating           1–5 | undefined
+ *   note             string | undefined
+ *   rewatchDates     string[] (ISO date strings)
+ *   isLocked         boolean
+ *   spoilerFree      boolean
+ *   friends          [{ id, name, avatar }]
+ *   taggedFriends    string[] (friend IDs tagged for this title)
+ *   onToggle         (id) → void
+ *   onSetInProgress  (id, progress | null) → void
+ *   onRate           (id, stars) → void
+ *   onSaveNote       (id, text) → void
+ *   onRewatch        (id) → void
+ *   onTagFriend      (id, friendId) → void
+ *   onClose          () → void
+ *   onUnlockRequest  (tierKey) → void
+ *   onOpenDetail     (titleId) → void  ← for similar-title navigation
  */
 
 import { useState } from 'react'
 import { getTitleMeta } from './data/titleMeta.js'
 import { getPrimaryLock, LOCK_TIERS } from './data/locks.js'
+import { TITLES } from './data/titles.js'
+import { AvatarDisplay } from './AvatarDisplay.jsx'
+import { FACTS }           from './data/facts.js'
+import { CHARACTERS }      from './data/characters.js'
+import { SIMILAR_TITLES }  from './data/recommendations.js'
 
-function MetaPill({ icon, label }) {
-  return (
-    <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#252525] rounded-lg px-2.5 py-1.5">
-      <span className="text-sm leading-none">{icon}</span>
-      <span className="text-[12px] text-[#aaa]">{label}</span>
-    </div>
-  )
-}
+const FACTS_DATA  = FACTS          ?? {}
+const CHARS_DATA  = CHARACTERS     ?? {}
+const SIMILAR_DATA = SIMILAR_TITLES ?? {}
 
+// ── helpers ───────────────────────────────────────────────────────────────────
 const TYPE_INFO = {
   movie:    { label: 'MOVIE',    cls: 'bg-red-950 text-[#E81C2E] border-[#E81C2E]/30' },
   tv:       { label: 'TV SHOW',  cls: 'bg-blue-950 text-blue-400 border-blue-400/30' },
@@ -45,28 +53,90 @@ const SERVICE_ICONS = {
   'Freeform': '📺',
 }
 
+// ── sub-components ────────────────────────────────────────────────────────────
+function MetaPill({ icon, label }) {
+  return (
+    <div className="flex items-center gap-1.5 bg-[#1a1a1a] border border-[#252525] rounded-lg px-2.5 py-1.5">
+      <span className="text-sm leading-none">{icon}</span>
+      <span className="text-[12px] text-[#aaa]">{label}</span>
+    </div>
+  )
+}
+
+function SectionLabel({ children }) {
+  return (
+    <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">
+      {children}
+    </div>
+  )
+}
+
+function SpoilerVeil({ children, revealed, onReveal }) {
+  if (revealed) return children
+  return (
+    <div className="relative select-none">
+      <div className="blur-sm pointer-events-none">{children}</div>
+      <button
+        onClick={onReveal}
+        className="absolute inset-0 flex items-center justify-center"
+      >
+        <span
+          className="text-[11px] font-semibold px-3 py-1.5 rounded-xl"
+          style={{ background: 'rgba(232,28,46,0.15)', color: '#E81C2E', border: '1px solid rgba(232,28,46,0.3)' }}
+        >
+          👁 Tap to reveal (spoilers)
+        </span>
+      </button>
+    </div>
+  )
+}
+
+// ── main component ────────────────────────────────────────────────────────────
 export default function TitleDetailModal({
   title,
   isWatched,
+  inProgress,
   rating,
   note,
+  rewatchDates = [],
   isLocked,
+  spoilerFree = false,
+  friends = [],
+  taggedFriends = [],
   onToggle,
+  onSetInProgress,
   onRate,
   onSaveNote,
+  onRewatch,
+  onTagFriend,
   onClose,
   onUnlockRequest,
+  onOpenDetail,
 }) {
-  const meta       = getTitleMeta(title.id)
+  const meta        = getTitleMeta(title.id)
   const primaryLock = getPrimaryLock(title.id)
-  const lockTier   = primaryLock ? LOCK_TIERS[primaryLock] : null
-  const typeInfo   = TYPE_INFO[title.type] ?? TYPE_INFO.movie
+  const lockTier    = primaryLock ? LOCK_TIERS[primaryLock] : null
+  const typeInfo    = TYPE_INFO[title.type] ?? TYPE_INFO.movie
   const serviceIcon = SERVICE_ICONS[meta.service] ?? '📺'
+  const isTV        = title.type === 'tv'
 
-  const [editNote,    setEditNote]    = useState(note ?? '')
-  const [noteChanged, setNoteChanged] = useState(false)
-  const [hoverStar,   setHoverStar]   = useState(0)
-  const [localRating, setLocalRating] = useState(rating ?? 0)
+  // own state
+  const [editNote,       setEditNote]       = useState(note ?? '')
+  const [noteChanged,    setNoteChanged]    = useState(false)
+  const [hoverStar,      setHoverStar]      = useState(0)
+  const [localRating,    setLocalRating]    = useState(rating ?? 0)
+  const [synopsisShown,  setSynopsisShown]  = useState(isWatched || !spoilerFree)
+  const [factsShown,     setFactsShown]     = useState(isWatched || !spoilerFree)
+  const [showTagFriends, setShowTagFriends] = useState(false)
+  // In-Progress editor
+  const [editingSeason,  setEditingSeason]  = useState(inProgress?.season ?? 1)
+  const [editingEp,      setEditingEp]      = useState(inProgress?.episode ?? 1)
+  const [showIPEditor,   setShowIPEditor]   = useState(false)
+
+  // Data slices
+  const titleFacts  = FACTS_DATA[title.id]   ?? []
+  const titleChars  = CHARS_DATA[title.id]   ?? []
+  const similarIds  = SIMILAR_DATA[title.id] ?? []
 
   function handleRatingSave(stars) {
     setLocalRating(stars)
@@ -78,13 +148,32 @@ export default function TitleDetailModal({
     setNoteChanged(false)
   }
 
+  function handleMarkWatched() {
+    onToggle(title.id)
+    onClose()
+  }
+
+  function handleMarkInProgress() {
+    onSetInProgress?.(title.id, { season: editingSeason, episode: editingEp })
+    setShowIPEditor(false)
+  }
+
+  function handleClearInProgress() {
+    onSetInProgress?.(title.id, null)
+  }
+
+  function handleRewatch() {
+    onRewatch?.(title.id)
+  }
+
+  const rewatchCount = rewatchDates.length
+
   return (
-    /* Full-screen overlay — z-index above nav bar (z-9999) */
     <div
       className="fixed inset-0 flex flex-col"
       style={{
         zIndex: 10000,
-        background: 'rgba(0,0,0,0.95)',
+        background: 'rgba(0,0,0,0.97)',
         backdropFilter: 'blur(12px)',
         animation: 'slideUp 0.28s cubic-bezier(0.32,0.72,0,1) both',
       }}
@@ -104,13 +193,23 @@ export default function TitleDetailModal({
           <span className="text-sm font-medium">Back</span>
         </button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <span className={`text-[9px] px-2 py-[3px] rounded-md border font-bold tracking-widest ${typeInfo.cls}`}>
             {typeInfo.label}
           </span>
           {isWatched && (
             <span className="text-[9px] px-2 py-[3px] rounded-md border font-bold tracking-widest bg-[#E81C2E]/10 text-[#E81C2E] border-[#E81C2E]/30">
               ✓ WATCHED
+            </span>
+          )}
+          {inProgress && !isWatched && (
+            <span className="text-[9px] px-2 py-[3px] rounded-md border font-bold tracking-widest bg-blue-950 text-blue-400 border-blue-400/30">
+              ▶ S{inProgress.season}E{inProgress.episode}
+            </span>
+          )}
+          {rewatchCount > 0 && (
+            <span className="text-[9px] px-2 py-[3px] rounded-md border font-bold tracking-widest bg-[#F5C518]/10 text-[#F5C518] border-[#F5C518]/30">
+              🔄 ×{rewatchCount + 1}
             </span>
           )}
           {title.comingSoon && (
@@ -131,7 +230,7 @@ export default function TitleDetailModal({
 
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-y-auto" style={{ background: '#0d0d0d' }}>
-        <div className="max-w-lg mx-auto px-5 pt-6 pb-10">
+        <div className="max-w-lg mx-auto px-5 pt-6 pb-12">
 
           {/* Title */}
           <h1 className="text-white font-bold text-2xl leading-tight mb-4">{title.title}</h1>
@@ -139,24 +238,63 @@ export default function TitleDetailModal({
           {/* Meta pills */}
           <div className="flex flex-wrap gap-2 mb-5">
             <MetaPill icon={serviceIcon} label={meta.service}/>
-            {meta.imdb && meta.imdb !== 'N/A' && (
-              <MetaPill icon="⭐" label={`IMDb ${meta.imdb}`}/>
-            )}
-            {meta.runtime && meta.runtime !== 'N/A' && (
-              <MetaPill icon="⏱" label={meta.runtime}/>
-            )}
+            {meta.imdb && meta.imdb !== 'N/A' && <MetaPill icon="⭐" label={`IMDb ${meta.imdb}`}/>}
+            {meta.runtime && meta.runtime !== 'N/A' && <MetaPill icon="⏱" label={meta.runtime}/>}
             <MetaPill icon="📋" label={`#${String(title.id).padStart(2, '0')}`}/>
           </div>
 
-          {/* ── Description ── */}
+          {/* ── Synopsis ── */}
           {meta.desc && meta.desc !== 'No description available.' ? (
             <div className="mb-6">
-              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Synopsis</div>
-              <p className="text-[#bbb] text-[14px] leading-[1.7]">{meta.desc}</p>
+              <SectionLabel>Synopsis</SectionLabel>
+              <SpoilerVeil revealed={synopsisShown} onReveal={() => setSynopsisShown(true)}>
+                <p className="text-[#bbb] text-[14px] leading-[1.7]">{meta.desc}</p>
+              </SpoilerVeil>
             </div>
           ) : (
             <div className="mb-6">
               <p className="text-[#444] text-[13px] italic">No description available.</p>
+            </div>
+          )}
+
+          {/* ── Characters ── */}
+          {titleChars.length > 0 && (
+            <div className="mb-6">
+              <SectionLabel>Characters</SectionLabel>
+              <SpoilerVeil revealed={factsShown} onReveal={() => setFactsShown(true)}>
+                <div className="flex flex-wrap gap-1.5">
+                  {titleChars.map(char => (
+                    <span
+                      key={char}
+                      className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
+                      style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #252525' }}
+                    >
+                      {char}
+                    </span>
+                  ))}
+                </div>
+              </SpoilerVeil>
+            </div>
+          )}
+
+          {/* ── Fun Facts ── */}
+          {titleFacts.length > 0 && (
+            <div className="mb-6">
+              <SectionLabel>🎬 Behind the Scenes</SectionLabel>
+              <SpoilerVeil revealed={factsShown} onReveal={() => setFactsShown(true)}>
+                <div className="space-y-2.5">
+                  {titleFacts.map((fact, i) => (
+                    <div
+                      key={i}
+                      className="flex gap-3 rounded-xl px-3.5 py-3"
+                      style={{ background: '#111', border: '1px solid #1e1e1e' }}
+                    >
+                      <span className="text-[#F5C518] text-sm mt-0.5 flex-shrink-0">💡</span>
+                      <p className="text-[#999] text-[12.5px] leading-[1.65]">{fact}</p>
+                    </div>
+                  ))}
+                </div>
+              </SpoilerVeil>
             </div>
           )}
 
@@ -171,22 +309,116 @@ export default function TitleDetailModal({
               <button
                 onClick={() => { onClose(); onUnlockRequest?.(primaryLock) }}
                 className="px-5 py-2.5 rounded-xl text-[12px] font-bold tracking-widest border transition-all"
-                style={{
-                  color: lockTier.color,
-                  borderColor: lockTier.color + '60',
-                  background: lockTier.color + '18',
-                }}
+                style={{ color: lockTier.color, borderColor: lockTier.color + '60', background: lockTier.color + '18' }}
               >
                 🔓 ENTER PIN TO UNLOCK
               </button>
             </div>
           )}
 
+          {/* ── In Progress tracker (TV shows) ── */}
+          {!isLocked && !title.comingSoon && isTV && !isWatched && (
+            <div className="mb-5">
+              {inProgress ? (
+                <div
+                  className="rounded-2xl p-4 mb-0"
+                  style={{ background: 'rgba(96,165,250,0.08)', border: '1px solid rgba(96,165,250,0.2)' }}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="text-blue-400 text-[11px] font-semibold uppercase tracking-widest mb-0.5">In Progress</div>
+                      <div className="text-white font-bold text-lg">Season {inProgress.season}, Episode {inProgress.episode}</div>
+                    </div>
+                    <button
+                      onClick={() => setShowIPEditor(v => !v)}
+                      className="text-[11px] text-blue-400 border border-blue-400/30 px-3 py-1.5 rounded-xl hover:bg-blue-400/10 transition-colors"
+                    >
+                      {showIPEditor ? 'Cancel' : 'Update'}
+                    </button>
+                  </div>
+
+                  {showIPEditor && (
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Season</div>
+                        <input type="number" min="1" max="20" value={editingSeason}
+                          onChange={e => setEditingSeason(Number(e.target.value))}
+                          className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-white text-center text-base focus:outline-none focus:border-blue-400/40"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Episode</div>
+                        <input type="number" min="1" max="99" value={editingEp}
+                          onChange={e => setEditingEp(Number(e.target.value))}
+                          className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-white text-center text-base focus:outline-none focus:border-blue-400/40"
+                        />
+                      </div>
+                      <button
+                        onClick={handleMarkInProgress}
+                        className="px-4 py-2 rounded-xl text-[12px] font-bold text-white"
+                        style={{ background: '#2563eb' }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleClearInProgress}
+                    className="mt-3 text-[11px] text-[#444] hover:text-[#888] transition-colors"
+                  >
+                    Clear progress
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setShowIPEditor(true); setShowTagFriends(false) }}
+                  className="w-full py-3 rounded-2xl font-semibold text-sm text-blue-400 border border-blue-400/25 bg-blue-400/5 hover:bg-blue-400/10 transition-all mb-0"
+                >
+                  ▶ Mark as In Progress
+                </button>
+              )}
+
+              {/* In-progress season/ep editor (when no inProgress yet) */}
+              {showIPEditor && !inProgress && (
+                <div
+                  className="rounded-2xl p-4 mt-2"
+                  style={{ background: '#111', border: '1px solid #1e1e1e' }}
+                >
+                  <div className="text-[10px] text-[#555] uppercase tracking-widest mb-3">Where are you?</div>
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Season</div>
+                      <input type="number" min="1" max="20" value={editingSeason}
+                        onChange={e => setEditingSeason(Number(e.target.value))}
+                        className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl px-3 py-2 text-white text-center text-base focus:outline-none focus:border-blue-400/40"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Episode</div>
+                      <input type="number" min="1" max="99" value={editingEp}
+                        onChange={e => setEditingEp(Number(e.target.value))}
+                        className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl px-3 py-2 text-white text-center text-base focus:outline-none focus:border-blue-400/40"
+                      />
+                    </div>
+                    <button
+                      onClick={handleMarkInProgress}
+                      className="px-4 py-2 rounded-xl text-[12px] font-bold text-white"
+                      style={{ background: '#2563eb' }}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Watch toggle ── */}
           {!title.comingSoon && !isLocked && (
             <button
-              onClick={() => { onToggle(title.id); onClose() }}
-              className={`w-full py-4 rounded-2xl font-bebas text-xl tracking-[0.12em] transition-all mb-6 ${
+              onClick={handleMarkWatched}
+              className={`w-full py-4 rounded-2xl font-bebas text-xl tracking-[0.12em] transition-all mb-4 ${
                 isWatched
                   ? 'bg-[#1a1a1a] text-[#555] border border-[#252525] hover:text-white hover:border-[#333]'
                   : 'bg-[#E81C2E] text-white hover:shadow-[0_0_24px_rgba(232,28,46,0.5)] active:scale-[0.99]'
@@ -196,10 +428,74 @@ export default function TitleDetailModal({
             </button>
           )}
 
+          {/* ── Watch With Someone ── */}
+          {!isLocked && friends.length > 0 && (
+            <div className="mb-5">
+              <button
+                onClick={() => setShowTagFriends(v => !v)}
+                className="flex items-center gap-2 text-[11px] text-[#555] hover:text-[#888] transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                </svg>
+                {taggedFriends.length > 0
+                  ? `Watched with ${taggedFriends.length} friend${taggedFriends.length > 1 ? 's' : ''}`
+                  : 'Tag who you watched with'}
+              </button>
+
+              {showTagFriends && (
+                <div
+                  className="mt-2 rounded-xl p-3"
+                  style={{ background: '#111', border: '1px solid #1e1e1e' }}
+                >
+                  <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Who'd you watch with?</div>
+                  <div className="flex flex-wrap gap-2">
+                    {friends.map(f => {
+                      const tagged = taggedFriends.includes(f.id)
+                      return (
+                        <button
+                          key={f.id}
+                          onClick={() => onTagFriend?.(title.id, f.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] transition-all"
+                          style={{
+                            background: tagged ? 'rgba(232,28,46,0.12)' : '#1a1a1a',
+                            border: tagged ? '1px solid rgba(232,28,46,0.4)' : '1px solid #252525',
+                            color: tagged ? '#E81C2E' : '#666',
+                          }}
+                        >
+                          <AvatarDisplay avatar={f.avatar} name={f.name} size="sm"/>
+                          <span className="ml-1">{f.name}</span>
+                          {tagged && <span>✓</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Rewatch ── */}
+          {!isLocked && isWatched && (
+            <div className="mb-5 flex items-center justify-between">
+              <button
+                onClick={handleRewatch}
+                className="flex items-center gap-2 text-[12px] font-semibold text-[#F5C518] hover:text-white transition-colors px-3 py-2 rounded-xl border border-[#F5C518]/20 hover:border-[#F5C518]/40 bg-[#F5C518]/5 hover:bg-[#F5C518]/10"
+              >
+                🔄 Log a Rewatch
+              </button>
+              {rewatchCount > 0 && (
+                <div className="text-[10px] text-[#555]">
+                  Rewatched <span className="text-[#F5C518]">{rewatchCount}×</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Star rating ── */}
           {!isLocked && (
             <div className="mb-6">
-              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-3 font-semibold">Your Rating</div>
+              <SectionLabel>Your Rating</SectionLabel>
               <div className="flex items-center gap-3">
                 {[1,2,3,4,5].map(n => (
                   <button
@@ -219,10 +515,38 @@ export default function TitleDetailModal({
             </div>
           )}
 
+          {/* ── Similar titles ── */}
+          {similarIds.length > 0 && isWatched && (
+            <div className="mb-6">
+              <SectionLabel>If You Liked This…</SectionLabel>
+              <div className="space-y-1.5">
+                {similarIds.slice(0, 3).map(sid => {
+                  const st = TITLES.find(t => t.id === sid)
+                  if (!st) return null
+                  return (
+                    <button
+                      key={sid}
+                      onClick={() => { onClose(); onOpenDetail?.(sid) }}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all hover:border-[#333] group"
+                      style={{ background: '#111', border: '1px solid #1e1e1e' }}
+                    >
+                      <span className="text-[#bbb] text-[13px] group-hover:text-white transition-colors">
+                        {st.title}
+                      </span>
+                      <svg className="w-3.5 h-3.5 text-[#333] group-hover:text-[#E81C2E] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                      </svg>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ── Personal notes ── */}
           {!isLocked && (
             <div>
-              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">📝 Notes</div>
+              <SectionLabel>📝 Notes</SectionLabel>
               <textarea
                 value={editNote}
                 onChange={e => { setEditNote(e.target.value); setNoteChanged(true) }}

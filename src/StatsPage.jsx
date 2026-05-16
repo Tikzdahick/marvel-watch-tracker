@@ -440,6 +440,171 @@ function WatchPlanner({ planner, onScheduleTitle, titles }) {
   )
 }
 
+// ── Watch History Timeline ─────────────────────────────────────────────────────
+
+const TIMELINE_START = new Date('2025-08-27T00:00:00')
+
+function WatchHistoryTimeline({ watchHistory, listTitles }) {
+  const scrollRef = useRef(null)
+
+  // Build an ordered list of days that have at least 1 watch
+  const days = useMemo(() => {
+    if (!watchHistory) return []
+    const titleMap = {}
+    listTitles.forEach(t => { titleMap[t.id] = t.title })
+
+    const entries = Object.entries(watchHistory)
+      .filter(([, ids]) => ids && ids.length > 0)
+      .map(([dateStr, ids]) => {
+        const d = new Date(dateStr + 'T00:00:00')
+        return {
+          dateStr,
+          date: d,
+          titles: ids.map(id => titleMap[id] || `#${id}`).filter(Boolean),
+          binge: ids.length >= 2,
+        }
+      })
+      .filter(e => e.date >= TIMELINE_START)
+      .sort((a, b) => a.date - b.date)
+
+    return entries
+  }, [watchHistory, listTitles])
+
+  if (days.length === 0) return null
+
+  const monthLabel = d => d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+  const dayLabel   = d => d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+
+  // Scroll to end on mount so latest is visible
+  const scrollToEnd = el => { if (el) el.scrollLeft = el.scrollWidth }
+
+  const bingeCount = days.filter(d => d.binge).length
+
+  return (
+    <div className="rounded-2xl border border-[#1e1e1e] bg-[#0a0a0a] overflow-hidden">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+        <div>
+          <div className="text-[10px] text-[#555] uppercase tracking-widest mb-0.5">Watch History</div>
+          <div className="font-bebas text-xl tracking-widest text-white">YOUR TIMELINE</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[11px] text-[#E81C2E] font-semibold">{days.length} watch days</div>
+          {bingeCount > 0 && (
+            <div className="text-[10px] text-[#F5C518]">⚡ {bingeCount} binge {bingeCount === 1 ? 'day' : 'days'}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable track */}
+      <div
+        ref={el => { scrollRef.current = el; scrollToEnd(el) }}
+        className="overflow-x-auto pb-4 px-4"
+        style={{ scrollbarWidth: 'none' }}
+      >
+        <div className="flex gap-2 pt-1" style={{ width: 'max-content' }}>
+          {days.map((day, i) => {
+            const showMonth = i === 0 || monthLabel(day.date) !== monthLabel(days[i - 1].date)
+            return (
+              <div key={day.dateStr} className="flex flex-col items-center" style={{ width: 72 }}>
+                {/* Month marker */}
+                <div className="h-4 flex items-center mb-1">
+                  {showMonth && (
+                    <span className="text-[9px] font-semibold tracking-widest uppercase"
+                      style={{ color: '#E81C2E' }}>
+                      {monthLabel(day.date)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Card */}
+                <div
+                  className="rounded-xl border p-2 flex flex-col gap-1 w-full"
+                  style={{
+                    background: day.binge
+                      ? 'linear-gradient(135deg, rgba(245,197,24,0.12) 0%, rgba(232,28,46,0.08) 100%)'
+                      : 'rgba(20,20,20,0.8)',
+                    borderColor: day.binge ? '#F5C518' : '#222',
+                    boxShadow: day.binge ? '0 0 10px rgba(245,197,24,0.15)' : 'none',
+                  }}
+                >
+                  {/* Day label */}
+                  <div className="flex items-center gap-1">
+                    {day.binge && <span className="text-[9px]">⚡</span>}
+                    <span className="text-[9px] font-semibold"
+                      style={{ color: day.binge ? '#F5C518' : '#888' }}>
+                      {dayLabel(day.date)}
+                    </span>
+                  </div>
+
+                  {/* Title pills */}
+                  <div className="flex flex-col gap-0.5">
+                    {day.titles.slice(0, 3).map((title, j) => (
+                      <div
+                        key={j}
+                        className="text-[8px] leading-tight rounded px-1 py-0.5 truncate"
+                        style={{
+                          background: 'rgba(232,28,46,0.15)',
+                          color: '#ddd',
+                          maxWidth: 64,
+                        }}
+                        title={title}
+                      >
+                        {title}
+                      </div>
+                    ))}
+                    {day.titles.length > 3 && (
+                      <div className="text-[8px] text-[#555] px-1">+{day.titles.length - 3} more</div>
+                    )}
+                  </div>
+
+                  {/* Count badge for binge days */}
+                  {day.binge && (
+                    <div className="text-[8px] font-bold text-center mt-0.5"
+                      style={{ color: '#F5C518' }}>
+                      {day.titles.length} titles
+                    </div>
+                  )}
+                </div>
+
+                {/* Timeline spine dot */}
+                <div className="flex flex-col items-center mt-1.5">
+                  <div
+                    className="rounded-full"
+                    style={{
+                      width: day.binge ? 8 : 5,
+                      height: day.binge ? 8 : 5,
+                      background: day.binge ? '#F5C518' : '#E81C2E',
+                      boxShadow: day.binge ? '0 0 6px #F5C518' : '0 0 4px rgba(232,28,46,0.6)',
+                    }}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Spine line */}
+        <div className="relative" style={{ marginTop: -6 }}>
+          <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, #2a2a2a 10%, #2a2a2a 90%, transparent)' }} />
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="px-4 pb-3 flex gap-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full" style={{ background: '#E81C2E' }} />
+          <span className="text-[9px] text-[#555]">Single watch</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#F5C518', boxShadow: '0 0 4px #F5C518' }} />
+          <span className="text-[9px] text-[#F5C518]">⚡ Binge day (2+)</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function StatsPage({
@@ -881,6 +1046,12 @@ export default function StatsPage({
             titles={titles}
           />
         )}
+
+        {/* ── Watch History Timeline ── */}
+        <WatchHistoryTimeline
+          watchHistory={watchHistory}
+          listTitles={listTitles}
+        />
 
         {/* ── Shareable card ── */}
         <div className="grid grid-cols-2 gap-3 pb-4">
