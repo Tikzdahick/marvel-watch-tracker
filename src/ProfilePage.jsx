@@ -2,21 +2,7 @@ import { useState, useRef, useMemo } from 'react'
 import { calcStreak, calcLongestStreak } from './data/achievements.js'
 import { LOCK_TIERS, LOCK_TIER_ORDER } from './data/locks.js'
 import { SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
-
-const PRESET_AVATARS = [
-  { emoji: '🤖', label: 'Iron Man' },
-  { emoji: '🛡️', label: 'Cap' },
-  { emoji: '⚡', label: 'Thor' },
-  { emoji: '🕷️', label: 'Spider-Man' },
-  { emoji: '🐾', label: 'Panther' },
-  { emoji: '🌀', label: 'Strange' },
-  { emoji: '💚', label: 'Hulk' },
-  { emoji: '🕸️', label: 'Widow' },
-  { emoji: '🏹', label: 'Hawkeye' },
-  { emoji: '⭐', label: 'Marvel' },
-  { emoji: '💜', label: 'Wanda' },
-  { emoji: '🦅', label: 'Falcon' },
-]
+import { AvatarDisplay, MARVEL_AVATARS } from './AvatarDisplay.jsx'
 
 const LIST_OPTS = [
   { id: 'rookie',   label: 'Rookie',   count: '58' },
@@ -30,20 +16,6 @@ const PACE_OPTS = [
   { id: 'avenger',    label: 'Avenger' },
   { id: 'thanos',     label: 'Thanos Mode' },
 ]
-
-function AvatarDisplay({ avatar, size = 'lg' }) {
-  const dim = size === 'lg' ? 'w-24 h-24 text-5xl rounded-3xl' : 'w-10 h-10 text-2xl rounded-xl'
-  const isPhoto = avatar?.startsWith('data:')
-  return (
-    <div className={`${dim} flex items-center justify-center overflow-hidden flex-shrink-0`}
-      style={{ background: '#161616', border: '2px solid rgba(232,28,46,0.35)' }}>
-      {isPhoto
-        ? <img src={avatar} alt="avatar" className="w-full h-full object-cover"/>
-        : <span>{avatar}</span>
-      }
-    </div>
-  )
-}
 
 function StatCard({ label, value, sub, color = 'text-white' }) {
   return (
@@ -102,6 +74,7 @@ export default function ProfilePage({
       setEditAvatar(ev.target.result)
     }
     reader.readAsDataURL(file)
+    e.target.value = '' // reset so same file can be re-selected
   }
 
   function handleSave() {
@@ -117,7 +90,7 @@ export default function ProfilePage({
 
   function handleCancel() {
     setEditName(profile.name)
-    setEditAvatar(profile.isCustomPhoto ? profile.avatar : profile.avatar)
+    setEditAvatar(profile.avatar ?? null)
     setEditPhoto(profile.isCustomPhoto ? profile.avatar : null)
     setEditList(config.listSize)
     setEditPace(config.pace)
@@ -187,18 +160,12 @@ export default function ProfilePage({
           className="rounded-2xl border border-[#1e1e1e] p-5 flex items-center gap-4"
           style={{ background: 'linear-gradient(135deg, #120000 0%, #0f0f0f 100%)' }}
         >
-          {/* Avatar */}
-          {editing ? (
-            <div className="w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden flex-shrink-0 text-5xl"
-              style={{ background: '#161616', border: '2px solid rgba(232,28,46,0.35)' }}>
-              {displayAvatar?.startsWith('data:')
-                ? <img src={displayAvatar} alt="avatar" className="w-full h-full object-cover"/>
-                : <span>{displayAvatar}</span>
-              }
-            </div>
-          ) : (
-            <AvatarDisplay avatar={profile.avatar} size="lg"/>
-          )}
+          {/* Avatar — same component whether editing or not */}
+          <AvatarDisplay
+            avatar={editing ? displayAvatar : profile.avatar}
+            name={profile.name}
+            size="lg"
+          />
 
           <div className="flex-1 min-w-0">
             {editing ? (
@@ -224,52 +191,90 @@ export default function ProfilePage({
 
         {/* ── Avatar picker (editing only) ── */}
         {editing && (
-          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f] space-y-3">
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f] space-y-4">
             <div className="text-[10px] text-[#555] uppercase tracking-widest">Change Avatar</div>
 
-            {/* Upload row */}
+            {/* Photo upload row */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => fileRef.current?.click()}
-                className="text-[11px] text-[#E81C2E] border border-[#E81C2E]/40 px-3 py-1.5 rounded-lg hover:bg-[#E81C2E]/10 transition-colors"
+                className="flex items-center gap-2 text-[12px] font-semibold text-white border border-[#E81C2E]/40 bg-[#E81C2E]/10 px-4 py-2.5 rounded-xl hover:bg-[#E81C2E]/20 transition-colors"
               >
-                📷 Upload Photo
+                <svg className="w-4 h-4 text-[#E81C2E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5"/>
+                </svg>
+                Upload Photo
               </button>
               {editPhoto && (
                 <button
-                  onClick={() => { setEditPhoto(null); setEditAvatar(PRESET_AVATARS[0].emoji) }}
-                  className="text-[11px] text-[#444] hover:text-[#888] transition-colors"
+                  onClick={() => { setEditPhoto(null); setEditAvatar(null) }}
+                  className="text-[11px] text-[#555] hover:text-[#E81C2E] transition-colors"
                 >
-                  Remove photo
+                  Remove
                 </button>
               )}
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handlePhotoUpload}
               />
             </div>
 
-            {/* Preset grid */}
-            <div className="grid grid-cols-6 gap-2">
-              {PRESET_AVATARS.map(p => (
-                <button
-                  key={p.emoji}
-                  onClick={() => { setEditAvatar(p.emoji); setEditPhoto(null) }}
-                  title={p.label}
-                  className={[
-                    'flex items-center justify-center p-2 rounded-xl text-2xl transition-all',
-                    !editPhoto && editAvatar === p.emoji
-                      ? 'bg-[#E81C2E]/15 border-2 border-[#E81C2E]/60 shadow-[0_0_10px_rgba(232,28,46,0.2)]'
-                      : 'bg-[#111] border border-[#1e1e1e] hover:border-[#333]',
-                  ].join(' ')}
-                >
-                  {p.emoji}
-                </button>
-              ))}
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-[#1e1e1e]"/>
+              <span className="text-[9px] text-[#444] uppercase tracking-widest">or choose a character</span>
+              <div className="flex-1 h-px bg-[#1e1e1e]"/>
             </div>
+
+            {/* Marvel character grid */}
+            <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto pr-0.5">
+              {MARVEL_AVATARS.map(char => {
+                const avatarKey  = `marvel-${char.id}`
+                const isSelected = !editPhoto && editAvatar === avatarKey
+                return (
+                  <button
+                    key={char.id}
+                    onClick={() => { setEditAvatar(avatarKey); setEditPhoto(null) }}
+                    title={char.label}
+                    className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-all active:scale-95"
+                    style={isSelected ? {
+                      background: char.ring + '18',
+                      border: `2px solid ${char.ring}70`,
+                      boxShadow: `0 0 12px ${char.ring}30`,
+                    } : {
+                      background: '#111',
+                      border: '1.5px solid #1e1e1e',
+                    }}
+                  >
+                    {/* Mini avatar */}
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center font-bebas text-lg flex-shrink-0"
+                      style={{ background: char.bg, color: char.color }}
+                    >
+                      {char.symbol}
+                    </div>
+                    <span
+                      className="text-[9px] leading-none text-center w-full truncate px-0.5"
+                      style={{ color: isSelected ? char.ring : '#555' }}
+                    >
+                      {char.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Clear / use initials */}
+            <button
+              onClick={() => { setEditAvatar(null); setEditPhoto(null) }}
+              className="w-full py-2.5 rounded-xl text-[11px] text-[#555] border border-[#1e1e1e] hover:text-[#888] hover:border-[#333] transition-all"
+            >
+              Use initials instead
+            </button>
           </div>
         )}
 

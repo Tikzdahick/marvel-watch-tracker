@@ -10,7 +10,10 @@ import PinModal from './PinModal.jsx'
 import FriendsPage from './FriendsPage.jsx'
 import CommunityFeed from './CommunityFeed.jsx'
 import AuthScreen from './AuthScreen.jsx'
+import HomePage from './HomePage.jsx'
+import { AvatarDisplay } from './AvatarDisplay.jsx'
 import { useAuth, SUPABASE_ENABLED } from './hooks/useAuth.js'
+import { ERAS, ERA_FOR_ID, getEraForId } from './data/eras.js'
 import {
   TITLES, DEFAULT_WATCHED, getTitlesForListSize, TIER_MAP, getRuntimeMinutes,
 } from './data/titles.js'
@@ -94,25 +97,27 @@ function TypeBadge({ type }) {
 
 function CheckCircle({ watched, isLocked, lockTier, comingSoon }) {
   if (comingSoon) return (
-    <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center border-2 border-[#F5C518]/40">
-      <span className="text-[10px] leading-none">⏳</span>
+    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center border-2 border-[#F5C518]/30 bg-[#0f0d00]">
+      <span className="text-[11px] leading-none">⏳</span>
     </div>
   )
   if (isLocked) {
     const bg   = lockTier?.bgColor     ?? 'bg-pink-950'
-    const bdr  = lockTier?.borderColor ?? 'border border-pink-500/40'
+    const bdr  = lockTier?.borderColor ?? 'border-pink-500/40'
     const clr  = lockTier?.color       ?? '#f9a8d4'
     return (
-      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center ${bg} border ${bdr}`}>
-        <span className="text-[10px] leading-none" style={{ color: clr }}>
+      <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center ${bg} border ${bdr}`}>
+        <span className="text-[11px] leading-none" style={{ color: clr }}>
           {lockTier?.emoji ?? '🔒'}
         </span>
       </div>
     )
   }
   return (
-    <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
-      watched ? 'bg-[#E81C2E] shadow-[0_0_8px_rgba(232,28,46,0.4)]' : 'border-2 border-[#2a2a2a]'
+    <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
+      watched
+        ? 'bg-[#E81C2E] shadow-[0_0_10px_rgba(232,28,46,0.5)]'
+        : 'border-2 border-[#333] bg-[#111] hover:border-[#E81C2E]/40'
     }`}>
       {watched && (
         <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -123,43 +128,109 @@ function CheckCircle({ watched, isLocked, lockTier, comingSoon }) {
   )
 }
 
+// ── Era section header ────────────────────────────────────────────────────────
+function EraHeader({ era, watchedCount, totalCount, onMarkAll, collapsed, onToggleCollapse }) {
+  const [confirm, setConfirm] = useState(false)
+  const allWatched = watchedCount >= totalCount
+  const pct = totalCount > 0 ? Math.round((watchedCount / totalCount) * 100) : 0
+
+  return (
+    <div className={`flex items-center gap-2 px-1 pt-5 pb-2 select-none`}>
+      {/* Collapse toggle */}
+      <button
+        onClick={onToggleCollapse}
+        className="flex items-center gap-2 flex-1 min-w-0 group"
+      >
+        <span className="text-base flex-shrink-0">{era.emoji}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-bebas text-[13px] tracking-widest ${era.color}`}>{era.label}</span>
+            <span className="text-[9px] text-[#444] uppercase tracking-wider hidden sm:inline">{era.sub}</span>
+          </div>
+          {/* Progress bar */}
+          <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex-1 h-0.5 bg-[#1a1a1a] rounded-full overflow-hidden max-w-[80px]">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${pct}%`,
+                  background: allWatched ? '#22c55e' : era.color.replace('text-', '').includes('[') ? '#E81C2E' : undefined,
+                  backgroundColor: allWatched ? '#22c55e' : undefined,
+                }}
+              />
+            </div>
+            <span className="text-[9px] text-[#444] tabular-nums">
+              {watchedCount}/{totalCount}
+              {allWatched && ' ✓'}
+            </span>
+          </div>
+        </div>
+        <svg
+          className={`w-3.5 h-3.5 flex-shrink-0 text-[#444] transition-transform duration-200 ${collapsed ? '' : 'rotate-90'}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+        </svg>
+      </button>
+
+      {/* Mark all watched */}
+      {!allWatched && !collapsed && (
+        confirm ? (
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button onClick={() => setConfirm(false)} className="text-[10px] text-[#555] hover:text-white px-2 py-1">
+              Cancel
+            </button>
+            <button
+              onClick={() => { onMarkAll(); setConfirm(false) }}
+              className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${era.border} ${era.color} ${era.bg} hover:opacity-80 transition-opacity`}
+            >
+              ✓ Confirm
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirm(true)}
+            className="flex-shrink-0 text-[10px] text-[#444] hover:text-white border border-[#222] rounded-lg px-2 py-1 transition-colors"
+            title={`Mark all ${era.label} titles as watched`}
+          >
+            ✓ All
+          </button>
+        )
+      )}
+    </div>
+  )
+}
+
 function TitleCard({
-  title, isWatched, isNextUp, onToggle, onOpenDetail, rating, hasNote,
+  title, isWatched, isNextUp, onOpenDetail, rating, hasNote,
   isRandomPick, isLocked, lockTier, isPlanned,
 }) {
   const comingSoon = !!title.comingSoon
-  const pressRef   = useRef(null)
-
-  function startPress() {
-    pressRef.current = setTimeout(() => onOpenDetail?.(), 600)
-  }
-  function endPress() { clearTimeout(pressRef.current) }
 
   function handleClick() {
-    if (comingSoon) return
-    if (isLocked) { onOpenDetail?.(); return }   // locked → open detail w/ unlock btn
-    onToggle(title.id)
+    // Always open detail modal on tap — toggle is inside the modal
+    onOpenDetail?.()
   }
 
   return (
     <li
       id={`title-${title.id}`}
       onClick={handleClick}
-      onMouseDown={startPress}
-      onMouseUp={endPress}
-      onMouseLeave={endPress}
-      onTouchStart={startPress}
-      onTouchEnd={endPress}
       className={[
-        'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-150 select-none',
-        isRandomPick ? 'cursor-pointer bg-[#1a0d00] border-[#F5C518] shadow-[0_0_18px_rgba(245,197,24,0.25)]'
-        : comingSoon ? 'cursor-default bg-[#0f0d00] border-[#F5C518]/20'
-        : isLocked   ? 'cursor-pointer bg-[#100a0a] border-pink-900/40 hover:border-pink-800/60'
-        : isWatched  ? 'cursor-pointer bg-[#0d0d0d] border-[#181818] active:scale-[0.99]'
-        : isNextUp   ? 'cursor-pointer bg-[#180000] border-[#E81C2E]/50 shadow-[0_0_16px_rgba(232,28,46,0.12)] active:scale-[0.99]'
-        : 'cursor-pointer bg-[#111] border-[#1c1c1c] hover:border-[#2a2a2a] active:scale-[0.99]',
+        'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-150 select-none relative overflow-hidden',
+        comingSoon ? 'cursor-default opacity-50 bg-[#0d0d0d] border-[#1a1a1a]'
+        : isRandomPick ? 'cursor-pointer bg-[#1a0d00] border-[#F5C518] shadow-[0_0_20px_rgba(245,197,24,0.3)]'
+        : isLocked   ? 'cursor-pointer bg-[#100a0a] border-pink-900/40 hover:border-pink-800/60 active:scale-[0.99]'
+        : isWatched  ? 'cursor-pointer bg-[#0a0a0a] border-[#141414] hover:border-[#1e1e1e] active:scale-[0.99] opacity-60 hover:opacity-80'
+        : isNextUp   ? 'cursor-pointer bg-[#130000] border-[#E81C2E]/60 shadow-[0_0_20px_rgba(232,28,46,0.15)] active:scale-[0.99]'
+        : 'cursor-pointer bg-[#111] border-[#1c1c1c] hover:border-[#333] hover:bg-[#131313] active:scale-[0.99]',
       ].join(' ')}
     >
+      {/* Next Up accent bar */}
+      {isNextUp && !isRandomPick && (
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#E81C2E] rounded-l-xl"/>
+      )}
+
       <CheckCircle
         watched={isWatched}
         isLocked={isLocked}
@@ -175,8 +246,8 @@ function TitleCard({
             </span>
           )}
           {isNextUp && !isRandomPick && (
-            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border bg-yellow-950 text-[#F5C518] border-[#F5C518]/30 font-bold tracking-widest">
-              NEXT UP
+            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border bg-[#E81C2E]/15 text-[#E81C2E] border-[#E81C2E]/40 font-bold tracking-widest">
+              ▶ NEXT UP
             </span>
           )}
           {comingSoon && (
@@ -193,25 +264,31 @@ function TitleCard({
             </span>
           )}
         </div>
-        <p className={`text-sm leading-snug font-medium ${
-          isWatched    ? 'line-through text-[#3a3a3a]'
-          : comingSoon ? 'text-[#888]'
+        <p className={`text-sm leading-snug font-medium transition-all ${
+          isWatched    ? 'line-through text-[#2a2a2a]'
+          : comingSoon ? 'text-[#555]'
           : isLocked   ? 'text-[#666]'
-          : 'text-white'
+          : isNextUp   ? 'text-white font-semibold'
+          : 'text-[#ddd]'
         }`}>{title.title}</p>
         {/* Mini star rating */}
-        {rating != null && !isLocked && (
+        {rating != null && !isLocked && !isWatched && (
           <div className="flex mt-0.5">
             {[1,2,3,4,5].map(n => (
-              <span key={n} className="text-[10px]" style={{ color: n <= rating ? '#F5C518' : '#2a2a2a' }}>★</span>
+              <span key={n} className="text-[10px]" style={{ color: n <= rating ? '#F5C518' : '#222' }}>★</span>
             ))}
           </div>
         )}
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {isPlanned && <span className="text-[12px] opacity-70" title="Scheduled">📅</span>}
-        {hasNote && !isLocked && <span className="text-[12px] opacity-60" title="Has note">📝</span>}
-        <span className="text-[11px] text-[#2a2a2a] font-mono tabular-nums">{pad2(title.id)}</span>
+        {isPlanned && <span className="text-[12px] opacity-60" title="Scheduled">📅</span>}
+        {hasNote && !isLocked && <span className="text-[12px] opacity-50" title="Has note">📝</span>}
+        {/* Chevron hint */}
+        {!comingSoon && (
+          <svg className="w-3.5 h-3.5 text-[#222]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        )}
       </div>
     </li>
   )
@@ -370,10 +447,10 @@ function SettingsModal({ config, onUpdate, onClose }) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
+    <div className="fixed inset-0 flex items-center justify-center px-4" style={{ zIndex: 10000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }} onClick={onClose}>
       <div
-        className="w-full max-w-lg bg-[#0f0f0f] border border-[#222] rounded-t-3xl p-6 pb-10"
-        style={{ animation: 'slideUp 0.3s ease both' }}
+        className="w-full max-w-lg bg-[#0f0f0f] border border-[#222] rounded-3xl p-6 pb-8"
+        style={{ animation: 'pickBounce 0.3s ease both' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="w-10 h-1 bg-[#333] rounded-full mx-auto mb-6"/>
@@ -421,13 +498,13 @@ function RatingModal({ titleName, currentRating, onRate, onDismiss }) {
   const [selected, setSelected] = useState(currentRating ?? 0)
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(4px)' }}
+      className="fixed inset-0 flex items-center justify-center px-4"
+      style={{ zIndex: 10000, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
       onClick={onDismiss}
     >
       <div
         className="w-full max-w-lg bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl p-6"
-        style={{ animation: 'slideUp 0.3s ease both' }}
+        style={{ animation: 'pickBounce 0.3s ease both' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="w-10 h-1 bg-[#333] rounded-full mx-auto mb-5"/>
@@ -476,7 +553,7 @@ export default function App() {
 
   // ── Onboarding ──
   const [onboarded, setOnboarded] = useState(() => loadJSON(SK_ONBOARDED, false))
-  const [config,    setConfig]    = useState(() => loadJSON(SK_CONFIG, { listSize: 'avenger', pace: 'casual' }))
+  const [config,    setConfig]    = useState(() => loadJSON(SK_CONFIG, { listSize: 'infinity', pace: 'casual' }))
 
   // ── Watched ──
   const [watched, setWatched] = useState(() =>
@@ -529,7 +606,7 @@ export default function App() {
   }, [user])
 
   // ── UI state ──
-  const [activeTab,      setActiveTab]      = useState('tracker')
+  const [activeTab,      setActiveTab]      = useState('home')
   const [filter,         setFilter]         = useState('all')
   const [search,         setSearch]         = useState('')
   const [toastQueue,     setToastQueue]     = useState([])
@@ -544,10 +621,13 @@ export default function App() {
   const [ratingModalId,  setRatingModalId]  = useState(null)
   const [detailModalId,  setDetailModalId]  = useState(null)
   const [randomPickId,   setRandomPickId]   = useState(null)
+  const [diceSpinning,   setDiceSpinning]   = useState(false)
   const [ratings,        setRatings]        = useState(() => loadJSON(SK_RATINGS, {}))
   const [notes,          setNotes]          = useState(() => loadJSON(SK_NOTES, {}))
   const [goal,           setGoal]           = useState(() => loadJSON(SK_GOAL, { weekly: 3 }))
   const [reminder,       setReminder]       = useState(() => loadJSON(SK_REMINDER, { time: '20:00', enabled: false }))
+  // collapsedEras: Set of era keys the user has collapsed
+  const [collapsedEras,  setCollapsedEras]  = useState(() => new Set())
 
   const shownCompletion = useRef(false)
   const isInitialMount  = useRef(true)
@@ -757,6 +837,14 @@ export default function App() {
     [listTitles, watched, lockPins, unlockedTiers]
   )
 
+  // ── Titles grouped by era (in ERAS order) ──
+  const groupedByEra = useMemo(() => {
+    return ERAS.map(era => ({
+      era,
+      titles: visible.filter(t => ERA_FOR_ID[t.id] === era.key),
+    })).filter(g => g.titles.length > 0)
+  }, [visible])
+
   // ── Lock PIN helpers ──
   function handleUnlockRequest(tierKey) {
     const pin = lockPins[tierKey]
@@ -784,6 +872,26 @@ export default function App() {
     }})
   }
 
+  // ── Mark all titles in an era as watched ──
+  function handleMarkEraWatched(eraKey) {
+    const today = todayStr()
+    const idsToMark = listTitles
+      .filter(t => ERA_FOR_ID[t.id] === eraKey && !t.comingSoon && !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers))
+      .map(t => t.id)
+    if (!idsToMark.length) return
+    setWatched(prev => {
+      const next = new Set(prev)
+      idsToMark.forEach(id => next.add(id))
+      setWatchHistory(prevH => {
+        const nextH = { ...prevH }
+        nextH[today] = [...new Set([...(nextH[today] ?? []), ...idsToMark])]
+        runAchievementCheck(next, nextH)
+        return nextH
+      })
+      return next
+    })
+  }
+
   // ── Planner helpers ──
   function handleScheduleTitle(titleId, dateStr) {
     setPlanner(prev => {
@@ -803,17 +911,19 @@ export default function App() {
   // ── Random pick ──
   function handleRandomPick(pickedTitle) {
     if (pickedTitle) {
-      // called from wheel with a specific pick
+      setDiceSpinning(true)
+      setTimeout(() => setDiceSpinning(false), 600)
       setRandomPickId(pickedTitle.id)
       setShowWheel(false)
       return
     }
-    // fallback: pick without wheel
-    const unwatched = wheelTitles
-    if (!unwatched.length) return
-    const pick = unwatched[Math.floor(Math.random() * unwatched.length)]
-    setRandomPickId(prev => prev === pick.id ? null : null)
-    requestAnimationFrame(() => setRandomPickId(pick.id))
+    if (!wheelTitles.length) return
+    setDiceSpinning(true)
+    setTimeout(() => {
+      setDiceSpinning(false)
+      const pick = wheelTitles[Math.floor(Math.random() * wheelTitles.length)]
+      setRandomPickId(pick.id)
+    }, 600)
   }
 
   // ── Rating + notes handlers ──
@@ -964,6 +1074,23 @@ export default function App() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* HOME TAB                                                               */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'home' && (
+        <HomePage
+          profile={profile}
+          stats={{ watchedCount: listWatchedCount, total, remaining, pct, unlockedAchievements }}
+          nextUp={listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers) && !t.comingSoon) ?? null}
+          loginDates={loginDates}
+          watchHistory={watchHistory}
+          onNavigate={(tab) => {
+            if (tab === 'profile') { setShowProfile(true) }
+            else { setActiveTab(tab) }
+          }}
+        />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════════ */}
       {/* TRACKER TAB                                                            */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'tracker' && (
@@ -1002,14 +1129,10 @@ export default function App() {
                 {/* Avatar / profile button */}
                 <button
                   onClick={() => setShowProfile(true)}
-                  className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0 transition-all hover:ring-2 hover:ring-[#E81C2E]/50"
-                  style={{ background: '#161616', border: '1.5px solid rgba(232,28,46,0.25)' }}
+                  className="w-9 h-9 flex-shrink-0 transition-all hover:ring-2 hover:ring-[#E81C2E]/50 rounded-xl overflow-hidden"
                   title="Profile"
                 >
-                  {profile?.avatar?.startsWith('data:')
-                    ? <img src={profile.avatar} alt="avatar" className="w-full h-full object-cover"/>
-                    : <span className="text-lg">{profile?.avatar ?? '👤'}</span>
-                  }
+                  <AvatarDisplay avatar={profile?.avatar} name={profile?.name} size="sm"/>
                 </button>
               </div>
 
@@ -1079,8 +1202,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* ── Title list ── */}
-          <main className="max-w-lg mx-auto px-4 pb-28">
+          {/* ── Title list (era-grouped) ── */}
+          <main className="max-w-lg mx-auto px-4 pb-32">
             {visible.length === 0 ? (
               <div className="flex flex-col items-center mt-16 gap-3 text-[#333]">
                 <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -1089,55 +1212,84 @@ export default function App() {
                 <p className="text-sm">No titles match your filter.</p>
               </div>
             ) : (
-              <ul className="space-y-1.5">
-                {visible.map(t => {
-                  const isLocked  = isTitleLocked(t.id, lockPins, unlockedTiers)
-                  const lockKey   = isLocked ? getPrimaryLock(t.id) : null
-                  const lockTier  = lockKey  ? LOCK_TIERS[lockKey] : null
-                  const isPlanned = !!planner[t.id]
+              <div>
+                {groupedByEra.map(({ era, titles: eraTitles }) => {
+                  const collapsed    = collapsedEras.has(era.key)
+                  const eraWatched   = eraTitles.filter(t => watched.has(t.id)).length
                   return (
-                    <TitleCard
-                      key={t.id}
-                      title={t}
-                      isWatched={watched.has(t.id)}
-                      isNextUp={t.id === nextUpId}
-                      onToggle={toggle}
-                      onOpenDetail={() => setDetailModalId(t.id)}
-                      rating={ratings[t.id]}
-                      hasNote={!!notes[t.id]}
-                      isRandomPick={t.id === randomPickId}
-                      isLocked={isLocked}
-                      lockTier={lockTier}
-                      isPlanned={isPlanned}
-                    />
+                    <div key={era.key}>
+                      <EraHeader
+                        era={era}
+                        watchedCount={eraWatched}
+                        totalCount={eraTitles.length}
+                        onMarkAll={() => handleMarkEraWatched(era.key)}
+                        collapsed={collapsed}
+                        onToggleCollapse={() => setCollapsedEras(prev => {
+                          const next = new Set(prev)
+                          collapsed ? next.delete(era.key) : next.add(era.key)
+                          return next
+                        })}
+                      />
+                      {!collapsed && (
+                        <ul className="space-y-1.5">
+                          {eraTitles.map(t => {
+                            const isLocked  = isTitleLocked(t.id, lockPins, unlockedTiers)
+                            const lockKey   = isLocked ? getPrimaryLock(t.id) : null
+                            const lockTier  = lockKey  ? LOCK_TIERS[lockKey] : null
+                            const isPlanned = !!planner[t.id]
+                            return (
+                              <TitleCard
+                                key={t.id}
+                                title={t}
+                                isWatched={watched.has(t.id)}
+                                isNextUp={t.id === nextUpId}
+                                onOpenDetail={() => setDetailModalId(t.id)}
+                                rating={ratings[t.id]}
+                                hasNote={!!notes[t.id]}
+                                isRandomPick={t.id === randomPickId}
+                                isLocked={isLocked}
+                                lockTier={lockTier}
+                                isPlanned={isPlanned}
+                              />
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
                   )
                 })}
-              </ul>
+              </div>
             )}
           </main>
 
           {/* ── Random Pick / Wheel floating button ── */}
           <div className="fixed bottom-20 right-4 z-20 flex flex-col items-end gap-2">
-            {randomPickId && (() => {
+            {randomPickId && !diceSpinning && (() => {
               const pick = TITLES.find(t => t.id === randomPickId)
               return pick ? (
                 <div
-                  className="bg-[#0f0f0f] border border-[#F5C518]/40 rounded-xl px-4 py-3 max-w-[220px] shadow-2xl"
-                  style={{ animation: 'slideUp 0.25s ease both' }}
+                  className="bg-[#0f0f0f] border border-[#F5C518]/40 rounded-2xl px-4 py-3.5 max-w-[230px] shadow-2xl"
+                  style={{ animation: 'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1) both' }}
                 >
-                  <p className="text-[9px] text-[#F5C518] uppercase tracking-widest mb-1">🎲 Random Pick</p>
-                  <p className="text-white text-xs font-medium leading-snug line-clamp-2">{pick.title}</p>
-                  <div className="flex gap-2 mt-2.5">
-                    <button onClick={() => handleRandomPick(null)}
-                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors">
-                      Skip
+                  <p className="text-[9px] text-[#F5C518] uppercase tracking-widest mb-1.5 font-bold">🎲 Random Pick</p>
+                  <p className="text-white text-sm font-semibold leading-snug line-clamp-2 mb-3">{pick.title}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setDetailModalId(pick.id) }}
+                      className="flex-1 text-[11px] text-[#888] hover:text-white border border-[#222] rounded-xl py-1.5 transition-colors"
+                    >
+                      Details
                     </button>
-                    <button onClick={() => { toggle(pick.id); setRandomPickId(null) }}
-                      className="flex-1 text-[10px] text-[#E81C2E] border border-[#E81C2E]/30 rounded-lg py-1 hover:bg-[#E81C2E]/10 transition-colors">
-                      Watch!
+                    <button
+                      onClick={() => { toggle(pick.id); setRandomPickId(null) }}
+                      className="flex-1 text-[11px] font-bold text-white bg-[#E81C2E] rounded-xl py-1.5 hover:shadow-[0_0_10px_rgba(232,28,46,0.4)] transition-all"
+                    >
+                      ✓ Watched!
                     </button>
-                    <button onClick={() => setRandomPickId(null)}
-                      className="flex-1 text-[10px] text-[#555] hover:text-white border border-[#222] rounded-lg py-1 transition-colors">
+                    <button
+                      onClick={() => setRandomPickId(null)}
+                      className="w-8 text-[#555] hover:text-white border border-[#222] rounded-xl flex items-center justify-center transition-colors"
+                    >
                       ✕
                     </button>
                   </div>
@@ -1146,14 +1298,21 @@ export default function App() {
             })()}
             <button
               onClick={() => setShowWheel(true)}
-              className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all hover:scale-110 active:scale-95"
+              className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-2xl transition-all active:scale-90 ${
+                diceSpinning ? 'scale-110' : 'hover:scale-110'
+              }`}
               style={{
-                background: 'linear-gradient(135deg, #E81C2E 0%, #b01020 100%)',
-                boxShadow: '0 0 20px rgba(232,28,46,0.4)',
+                background: diceSpinning
+                  ? 'linear-gradient(135deg, #F5C518 0%, #d4a017 100%)'
+                  : 'linear-gradient(135deg, #E81C2E 0%, #b01020 100%)',
+                boxShadow: diceSpinning
+                  ? '0 0 30px rgba(245,197,24,0.6)'
+                  : '0 0 24px rgba(232,28,46,0.45)',
+                animation: diceSpinning ? 'diceSpin 0.6s ease both' : undefined,
               }}
               title="Spin the Randomizer Wheel"
             >
-              🎲
+              {diceSpinning ? '✨' : '🎲'}
             </button>
           </div>
         </>
@@ -1199,6 +1358,14 @@ export default function App() {
       <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#111111', borderTop: '1px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto flex">
           {[
+            {
+              id: 'home', label: 'HOME', badge: null,
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+                </svg>
+              ),
+            },
             {
               id: 'tracker', label: 'TRACKER', badge: null,
               icon: (
@@ -1248,7 +1415,7 @@ export default function App() {
                 key={tab.id}
                 onClick={() => {
                   if (tab.isProfileTab) { setShowProfile(true); setShowFriends(false) }
-                  else { setActiveTab(tab.id); setShowProfile(false); setShowFriends(false) }
+                  else { setActiveTab(tab.id); setShowProfile(false); setShowFriends(false); setShowWheel(false) }
                 }}
                 className={[
                   'flex-1 flex flex-col items-center gap-1 py-3 transition-all relative',
@@ -1256,7 +1423,7 @@ export default function App() {
                 ].join(' ')}
               >
                 {tab.icon}
-                <span className="font-bebas text-[10px] tracking-widest">{tab.label}</span>
+                <span className="font-bebas text-[9px] tracking-wider">{tab.label}</span>
                 {tab.badge != null && tab.badge > 0 && (
                   <span className="absolute top-2 right-[calc(50%-14px)] w-4 h-4 rounded-full bg-[#F5C518] text-black text-[9px] font-black flex items-center justify-center">
                     {tab.badge}

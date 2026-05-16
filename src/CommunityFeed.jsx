@@ -504,10 +504,16 @@ export default function CommunityFeed({ user, friendIds = [] }) {
   const friendSet = new Set(friendIds)
   const PAGE = 20
 
+  const [fetchError, setFetchError] = useState(false)
+
   const loadPosts = useCallback(async (reset = false) => {
-    if (reset) setLoading(true); else setLoadingMore(true)
+    if (reset) { setLoading(true); setFetchError(false) }
+    else setLoadingMore(true)
     const { data, error } = await fetchPosts({ cursor: reset ? null : cursor, limit: PAGE })
-    if (!error && data) {
+    if (error) {
+      setFetchError(true)
+    } else if (data) {
+      setFetchError(false)
       const sorted = sortPosts(data, friendSet)
       if (reset) {
         setPosts(sorted)
@@ -635,6 +641,22 @@ export default function CommunityFeed({ user, friendIds = [] }) {
         <div className="flex flex-col items-center gap-3 mt-16 text-[#333]">
           <div className="w-6 h-6 rounded-full border-2 border-[#E81C2E]/40 border-t-[#E81C2E] animate-spin"/>
           <p className="text-[12px]">Loading posts…</p>
+        </div>
+      ) : fetchError ? (
+        <div className="flex flex-col items-center mt-16 gap-4 text-center px-4">
+          <span className="text-4xl">⚠️</span>
+          <div>
+            <p className="text-[#888] text-sm font-semibold mb-1">Couldn't load posts</p>
+            <p className="text-[#444] text-[12px] leading-relaxed">
+              Check that your Supabase credentials are correct and the database tables have been created.
+            </p>
+          </div>
+          <button
+            onClick={() => loadPosts(true)}
+            className="px-4 py-2 rounded-xl text-[12px] text-[#E81C2E] border border-[#E81C2E]/30 hover:bg-[#E81C2E]/10 transition-all"
+          >
+            Try again
+          </button>
         </div>
       ) : posts.length === 0 ? (
         <div className="flex flex-col items-center mt-16 gap-4 text-center">
