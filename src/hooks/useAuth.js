@@ -37,11 +37,16 @@ export function useAuth() {
         if (!sb) { setLoading(false); return }
 
         // Get the existing session on mount
-        sb.auth.getSession().then(({ data }) => {
-          setSession(data.session)
-          setUser(data.session?.user ?? null)
-          setLoading(false)
-        })
+        sb.auth.getSession()
+          .then(({ data }) => {
+            setSession(data.session)
+            setUser(data.session?.user ?? null)
+            setLoading(false)
+          })
+          .catch(err => {
+            console.error('[MVT] useAuth getSession error:', err)
+            setLoading(false)
+          })
 
         // Subscribe to future auth state changes
         const { data: { subscription } } = sb.auth.onAuthStateChange((_event, newSession) => {
