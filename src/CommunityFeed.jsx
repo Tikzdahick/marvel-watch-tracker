@@ -560,18 +560,17 @@ function CreatePostForm({ userId, onCreated }) {
 // ── Main CommunityFeed ────────────────────────────────────────────────────────
 
 export default function CommunityFeed({ user, friendIds = [] }) {
-  if (!SUPABASE_ENABLED) return <SupabaseRequired/>
-
+  // ── All hooks must come before any early return (Rules of Hooks) ──
   const [posts,       setPosts]       = useState([])
   const [loading,     setLoading]     = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [cursor,      setCursor]      = useState(null)
   const [hasMore,     setHasMore]     = useState(true)
   const [newCount,    setNewCount]    = useState(0)
+  const [fetchError, setFetchError] = useState(false)
+
   const friendSet = new Set(friendIds)
   const PAGE = 20
-
-  const [fetchError, setFetchError] = useState(false)
 
   const loadPosts = useCallback(async (reset = false) => {
     if (reset) { setLoading(true); setFetchError(false) }
@@ -613,6 +612,9 @@ export default function CommunityFeed({ user, friendIds = [] }) {
     })
     return unsub
   }, [user?.id, cursor])
+
+  // Early return after all hooks — SUPABASE_ENABLED is a build-time constant
+  if (!SUPABASE_ENABLED) return <SupabaseRequired/>
 
   function sortPosts(list, fSet) {
     return [...list].sort((a, b) => {
