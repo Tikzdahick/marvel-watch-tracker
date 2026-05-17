@@ -10,7 +10,10 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        // Force everything into one bundle — prevents the TDZ "cannot access
+        // before initialization" error caused by Rollup's chunk-splitting
+        // reordering module initializers when circular refs are present.
+        manualChunks: () => 'index',
       },
     },
   },

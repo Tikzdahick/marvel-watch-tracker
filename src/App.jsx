@@ -1,3 +1,4 @@
+// v1.0.1 — single-bundle build (manualChunks fix)
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Onboarding from './Onboarding.jsx'
 import Achievements from './Achievements.jsx'
