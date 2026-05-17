@@ -714,9 +714,11 @@ const FILTERS       = ['all','unwatched','watched','movies','tv','animated']
 const FILTER_LABELS = { all:'All', unwatched:'Unwatched', watched:'Watched', movies:'Movies', tv:'TV', animated:'Animated' }
 
 export default function App() {
+  console.log('[MVT] App function called')
   // ── Auth ──
   const { user, loading: authLoading } = useAuth()
   const [showAuth, setShowAuth] = useState(false)
+  console.log('[MVT] auth state:', { authLoading, hasUser: !!user })
 
   // ── Profile ──
   const [profile, setProfile] = useState(() => loadJSON(SK_PROFILE, null))
@@ -1473,6 +1475,7 @@ export default function App() {
   }
 
   // ── Gates ──
+  console.log('[MVT] reached gates — authLoading:', authLoading, 'profile:', !!profile, 'onboarded:', onboarded)
 
   // Show loading spinner while auth resolves
   if (authLoading) {
@@ -1505,6 +1508,7 @@ export default function App() {
   const detailTitle = detailModalId ? TITLES.find(t => t.id === detailModalId) : null
 
   const currentTheme = getTheme(appTheme)
+  console.log('[MVT] rendering main UI, tab:', activeTab)
 
   return (
     <div className="min-h-screen" style={{ background: currentTheme.bg }}>
