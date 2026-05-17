@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from 'react'
+import TriviaHistorySection from './TriviaHistorySection.jsx'
 import {
   getTitlesForListSize,
   IDS_BLADE, IDS_XMEN_ERA, IDS_INFINITY_SAGA, IDS_DEFENDERS_SAGA, IDS_MULTIVERSE_SAGA,
@@ -610,7 +611,7 @@ function WatchHistoryTimeline({ watchHistory, listTitles }) {
 export default function StatsPage({
   watched, watchHistory, loginDates, config, ratings,
   goal, onSetGoal, reminder, onSetReminder, profile,
-  planner, onScheduleTitle, titles,
+  planner, onScheduleTitle, titles, triviaState = {},
 }) {
   const [goalInput,    setGoalInput]    = useState(String(goal.weekly))
   const [reminderTime, setReminderTime] = useState(reminder.time)
@@ -1052,6 +1053,9 @@ export default function StatsPage({
           watchHistory={watchHistory}
           listTitles={listTitles}
         />
+
+        {/* ── Trivia History ── */}
+        <TriviaHistorySection triviaState={triviaState}/>
 
         {/* ── Shareable card ── */}
         <div className="grid grid-cols-2 gap-3 pb-4">

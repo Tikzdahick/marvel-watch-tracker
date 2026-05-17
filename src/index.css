@@ -57,3 +57,51 @@ body {
   60%  { transform: scale(1.05); opacity: 1; }
   100% { transform: scale(1); }
 }
+
+@keyframes splashLogoReveal {
+  0%   { transform: scale(0.6); opacity: 0; }
+  70%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes splashParticle {
+  0%   { opacity: 0.7; transform: var(--particle-translate) scale(1); }
+  100% { opacity: 0;   transform: var(--particle-translate) scale(0) translateY(-30px); }
+}
+
+@keyframes splashFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes confettiParticle {
+  0%   { opacity: 1; transform: var(--confetti-translate) rotate(0deg) scale(1); }
+  80%  { opacity: 0.8; }
+  100% { opacity: 0; transform: var(--confetti-translate) translateY(-120px) rotate(var(--confetti-rotate)) scale(0.3); }
+}
+
+@keyframes bannerReveal {
+  0%   { opacity: 0; transform: scale(0.7) translateY(20px); }
+  70%  { transform: scale(1.05) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes tutorialSlideLeft {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(-100%); opacity: 0; }
+}
+
+@keyframes tutorialSlideRight {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes tutorialSlideInLeft {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes tutorialSlideInRight {
+  from { transform: translateX(-100%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}

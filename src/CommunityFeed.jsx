@@ -73,18 +73,21 @@ function TypeBadge({ type }) {
 function SupabaseRequired() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center gap-5">
-      <div className="w-16 h-16 rounded-2xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-3xl">
-        💬
-      </div>
+      <div className="text-5xl">💬</div>
       <div>
         <h2 className="font-bebas text-2xl tracking-[0.12em] text-white mb-2">COMMUNITY FEED</h2>
-        <p className="text-[13px] text-[#555] leading-relaxed">
-          The community feed requires Supabase.<br/>
-          Add your <span className="text-[#F5C518] font-mono text-[11px]">VITE_SUPABASE_URL</span> and{' '}
-          <span className="text-[#F5C518] font-mono text-[11px]">VITE_SUPABASE_ANON_KEY</span> to{' '}
-          <span className="text-[#F5C518] font-mono text-[11px]">.env.local</span> and restart the dev server.
+        <p className="text-sm text-[#555] leading-relaxed max-w-xs">
+          Connect your Supabase account to share reviews, post progress updates, and see what other Marvel fans are watching.
         </p>
       </div>
+      <div className="flex gap-3 mt-2">
+        {['🦸‍♂️','🦸‍♀️','🕷️','🔨','🛡️'].map((e, i) => (
+          <div key={i} className="w-10 h-10 rounded-full bg-[#141414] border border-[#222] flex items-center justify-center text-base">
+            {e}
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] text-[#E81C2E] font-semibold tracking-widest uppercase">Join the Universe — Configure Supabase</p>
     </div>
   )
 }
@@ -195,12 +198,84 @@ function CommentThread({ postId, userId, commentCount }) {
   )
 }
 
+// ── ReportModal ───────────────────────────────────────────────────────────────
+
+const REPORT_CATEGORIES = [
+  { id: 'spam',          label: '🚫 Spam',           desc: 'Repetitive or promotional content' },
+  { id: 'inappropriate', label: '⚠️ Inappropriate',  desc: 'Offensive or adult content' },
+  { id: 'harassment',    label: '🛑 Harassment',      desc: 'Bullying or targeted attacks' },
+  { id: 'spoilers',      label: '👁️ Spoilers',       desc: 'Reveals plot without warning' },
+  { id: 'other',         label: '📋 Other',           desc: 'Something else entirely' },
+]
+
+function ReportModal({ postId, userId, onClose, onReported }) {
+  const [selected, setSelected] = useState(null)
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit() {
+    if (!selected) return
+    setSubmitting(true)
+    await reportPost(postId, userId, selected)
+    setSubmitted(true)
+    setTimeout(() => { onReported?.(); onClose() }, 1500)
+  }
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4"
+      style={{ zIndex: 10002, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}>
+      <div className="w-full max-w-sm bg-[#0f0f0f] border border-[#222] rounded-2xl p-5"
+        style={{ animation: 'pickBounce 0.3s ease both' }}
+        onClick={e => e.stopPropagation()}>
+        {submitted ? (
+          <div className="text-center py-4">
+            <div className="text-3xl mb-3">✅</div>
+            <div className="font-bebas text-lg tracking-widest text-white mb-1">REPORT SUBMITTED</div>
+            <p className="text-[11px] text-[#555]">Thanks for helping keep the community safe.</p>
+          </div>
+        ) : (
+          <>
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Report Post</div>
+            <h3 className="font-bebas text-xl tracking-widest text-white mb-4">WHY ARE YOU REPORTING THIS?</h3>
+            <div className="space-y-2 mb-5">
+              {REPORT_CATEGORIES.map(cat => (
+                <button key={cat.id}
+                  onClick={() => setSelected(cat.id)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl border transition-all ${
+                    selected === cat.id
+                      ? 'bg-[#E81C2E]/10 border-[#E81C2E]/40 text-white'
+                      : 'bg-[#111] border-[#1e1e1e] text-[#666] hover:text-white hover:border-[#333]'
+                  }`}>
+                  <div className="text-sm font-semibold">{cat.label}</div>
+                  <div className="text-[10px] text-[#444] mt-0.5">{cat.desc}</div>
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl text-xs text-[#555] border border-[#1e1e1e] hover:text-white transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleSubmit}
+                disabled={!selected || submitting}
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-[#E81C2E] text-white disabled:opacity-30 hover:shadow-[0_0_12px_rgba(232,28,46,0.4)] transition-all">
+                {submitting ? 'Reporting…' : 'Submit Report'}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ── PostCard ──────────────────────────────────────────────────────────────────
 
 function PostCard({ post, userId, isFriend, onDelete, onLikeToggle }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [reported, setReported]           = useState(false)
   const [reportDone, setReportDone]       = useState(false)
+  const [showReport, setShowReport]       = useState(false)
 
   const isOwn   = post.author?.id === userId
   const likes   = post.likes ?? []
@@ -211,13 +286,6 @@ function PostCard({ post, userId, isFriend, onDelete, onLikeToggle }) {
     : 0
 
   const titleObj = post.title_id ? TITLES.find(t => t.id === post.title_id) : null
-
-  async function handleReport() {
-    if (reportDone) return
-    await reportPost(post.id, userId)
-    setReportDone(true)
-    setReported(false)
-  }
 
   return (
     <div className={[
@@ -270,20 +338,10 @@ function PostCard({ post, userId, isFriend, onDelete, onLikeToggle }) {
           </div>
         ) : (
           <div className="flex-shrink-0">
-            {reported ? (
-              <div className="flex gap-2 items-center">
-                <button onClick={() => setReported(false)} className="text-[10px] text-[#555] hover:text-white">Cancel</button>
-                <button
-                  onClick={handleReport}
-                  className="text-[10px] text-[#E81C2E] border border-[#E81C2E]/30 rounded-lg px-2 py-0.5 hover:bg-[#E81C2E]/10"
-                >
-                  {reportDone ? '✓ Reported' : 'Report'}
-                </button>
-              </div>
-            ) : reportDone ? (
+            {reportDone ? (
               <span className="text-[10px] text-[#555]">✓ Reported</span>
             ) : (
-              <button onClick={() => setReported(true)} className="text-[#2a2a2a] hover:text-[#555] transition-colors">
+              <button onClick={() => setShowReport(true)} className="text-[#2a2a2a] hover:text-[#555] transition-colors">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5"/>
                 </svg>
@@ -325,6 +383,15 @@ function PostCard({ post, userId, isFriend, onDelete, onLikeToggle }) {
         {/* Comments */}
         <CommentThread postId={post.id} userId={userId} commentCount={commentCount}/>
       </div>
+
+      {showReport && (
+        <ReportModal
+          postId={post.id}
+          userId={userId}
+          onClose={() => setShowReport(false)}
+          onReported={() => setReportDone(true)}
+        />
+      )}
     </div>
   )
 }
@@ -659,12 +726,14 @@ export default function CommunityFeed({ user, friendIds = [] }) {
           </button>
         </div>
       ) : posts.length === 0 ? (
-        <div className="flex flex-col items-center mt-16 gap-4 text-center">
-          <span className="text-4xl">💬</span>
-          <div>
-            <p className="text-[#555] text-sm mb-1">No posts yet</p>
-            <p className="text-[#333] text-[12px]">Be the first to share your Marvel journey!</p>
-          </div>
+        <div className="flex flex-col items-center justify-center py-20 px-8 text-center gap-4">
+          <div className="text-5xl mb-2">🌌</div>
+          <h3 className="font-bebas text-2xl tracking-[0.15em] text-white">THE UNIVERSE IS QUIET</h3>
+          <p className="text-sm text-[#555] leading-relaxed max-w-xs">
+            No posts yet. Be the first to share your Marvel journey with the community!
+          </p>
+          <div className="w-16 h-0.5 bg-[#E81C2E]/30 rounded-full my-1"/>
+          <p className="text-[11px] text-[#E81C2E] font-semibold tracking-widest uppercase">Be the first to post ↑</p>
         </div>
       ) : (
         <div className="space-y-3">

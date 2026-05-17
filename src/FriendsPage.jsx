@@ -3,6 +3,7 @@ import { SUPABASE_ENABLED } from './hooks/useAuth.js'
 import {
   searchUsers, fetchFriendships, sendFriendRequest,
   acceptFriendRequest, declineFriendRequest, removeFriendship, fetchFriendProfile,
+  blockUser, unblockUser, muteUser, unmuteUser, fetchBlocked, fetchMuted, reportUser,
 } from './lib/supabaseHelpers.js'
 import { getTitlesForListSize, getRuntimeMinutes } from './data/titles.js'
 
@@ -126,10 +127,20 @@ export default function FriendsPage({ userId, onClose }) {
 function FriendsList({ friends, friendOf, userId, onView, onRemove }) {
   if (friends.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 gap-3 text-[#333]">
-        <span className="text-4xl">👥</span>
-        <p className="text-sm">No friends yet.</p>
-        <p className="text-xs text-[#222]">Use Find People to connect with other fans.</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] px-8 text-center gap-4">
+        <div className="text-5xl mb-2">🦸‍♂️🦸‍♀️⚡</div>
+        <h3 className="font-bebas text-2xl tracking-[0.15em] text-white">ASSEMBLE YOUR TEAM</h3>
+        <p className="text-sm text-[#555] leading-relaxed max-w-xs">
+          Every Avenger needs their squad. Find other Marvel fans and track each other's progress across the universe.
+        </p>
+        <div className="flex gap-2 mt-2">
+          {['🦸','🕷','🔨','🛡','💚','🪃'].map((e, i) => (
+            <div key={i} className="w-10 h-10 rounded-full bg-[#141414] border border-[#222] flex items-center justify-center text-lg">
+              {e}
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-[#E81C2E] font-semibold tracking-widest uppercase mt-1">Use "Find People" to connect</p>
       </div>
     )
   }
@@ -252,6 +263,9 @@ function SearchTab({ userId, friendships, onRequestSent }) {
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [sent,    setSent]    = useState(new Set())
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('mvt-recent-searches') || '[]') } catch { return [] }
+  })
 
   const existingIds = new Set(
     friendships.flatMap(f => [f.requester?.id, f.addressee?.id]).filter(Boolean)
@@ -264,6 +278,11 @@ function SearchTab({ userId, friendships, onRequestSent }) {
     const { data } = await searchUsers(q.trim(), userId)
     setResults(data ?? [])
     setLoading(false)
+    if (q.trim() && data?.length > 0) {
+      const recent = [q.trim(), ...recentSearches.filter(r => r !== q.trim())].slice(0, 5)
+      setRecentSearches(recent)
+      try { localStorage.setItem('mvt-recent-searches', JSON.stringify(recent)) } catch {}
+    }
   }
 
   async function handleSendRequest(toId) {
@@ -290,8 +309,30 @@ function SearchTab({ userId, friendships, onRequestSent }) {
 
       {loading && <div className="text-center text-[#333] text-sm py-8">Searching…</div>}
 
-      {!loading && results.length === 0 && query && (
-        <div className="text-center text-[#333] text-sm py-8">No users found for "{query}"</div>
+      {!query.trim() && recentSearches.length > 0 && (
+        <div className="mb-4">
+          <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2">Recent Searches</div>
+          <div className="flex flex-wrap gap-2">
+            {recentSearches.map(r => (
+              <button key={r} onClick={() => handleSearch(r)}
+                className="px-3 py-1.5 rounded-full bg-[#141414] border border-[#222] text-[11px] text-[#666] hover:text-white hover:border-[#333] transition-all">
+                🔍 {r}
+              </button>
+            ))}
+            <button onClick={() => { setRecentSearches([]); localStorage.removeItem('mvt-recent-searches') }}
+              className="px-3 py-1.5 rounded-full text-[11px] text-[#333] hover:text-[#555] transition-colors">
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {query.trim() && !loading && results.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-12 text-center gap-3">
+          <div className="text-4xl">🕷️</div>
+          <p className="text-sm font-semibold text-[#555]">No heroes found in the Multiverse</p>
+          <p className="text-[11px] text-[#333]">Try a different username</p>
+        </div>
       )}
 
       <ul className="divide-y divide-[#161616]">
@@ -328,6 +369,9 @@ function FriendProfileView({ friend, selfId, onBack, onRemove }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [reported, setReported] = useState(false)
 
   useEffect(() => {
     fetchFriendProfile(friend.id).then(({ data }) => { setProfile(data); setLoading(false) })
@@ -421,6 +465,51 @@ function FriendProfileView({ friend, selfId, onBack, onRemove }) {
                 </div>
               ) : null
             })()}
+
+            {/* Block / Mute */}
+            <div className="mt-4 border-t border-[#1a1a1a] pt-4">
+              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-3">Privacy Controls</div>
+              <div className="flex gap-2">
+                <button
+                  onClick={async () => {
+                    if (blocked) { await unblockUser(selfId, friend.id); setBlocked(false) }
+                    else { await blockUser(selfId, friend.id); setBlocked(true) }
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                    blocked ? 'bg-[#E81C2E]/10 border-[#E81C2E]/40 text-[#E81C2E]' : 'bg-[#111] border-[#222] text-[#555] hover:text-white hover:border-[#333]'
+                  }`}
+                >
+                  {blocked ? '🚫 Unblock' : '🚫 Block'}
+                </button>
+                <button
+                  onClick={async () => {
+                    if (muted) { await unmuteUser(selfId, friend.id); setMuted(false) }
+                    else { await muteUser(selfId, friend.id); setMuted(true) }
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                    muted ? 'bg-[#333] border-[#444] text-[#888]' : 'bg-[#111] border-[#222] text-[#555] hover:text-white hover:border-[#333]'
+                  }`}
+                >
+                  {muted ? '🔇 Unmute' : '🔇 Mute'}
+                </button>
+                <button
+                  onClick={async () => {
+                    setReported(true)
+                    await reportUser(selfId, friend.id, 'profile-report')
+                  }}
+                  disabled={reported}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold border border-[#222] text-[#444] hover:text-[#888] disabled:opacity-40 transition-all bg-[#111]"
+                >
+                  {reported ? '✓ Reported' : '⚑ Report'}
+                </button>
+              </div>
+              {blocked && (
+                <p className="text-[10px] text-[#E81C2E]/60 mt-2 text-center">This user cannot see your profile or send you requests.</p>
+              )}
+              {muted && (
+                <p className="text-[10px] text-[#555] mt-2 text-center">Their posts are hidden from your community feed.</p>
+              )}
+            </div>
           </>
         )}
       </div>

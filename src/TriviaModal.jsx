@@ -1,4 +1,8 @@
 import { useState, useEffect } from 'react'
+import { getRank } from './data/triviaRanks.js'
+
+function getRankIcon(points) { return getRank(points).icon }
+function getRankLabel(points) { return getRank(points).label }
 
 /** Returns today's date as YYYY-MM-DD in local time */
 export function getTodayDateStr() {
@@ -21,14 +25,15 @@ const LABELS = ['A', 'B', 'C', 'D']
  *   onAnswer:    (correct: boolean) => void
  *   onClose:     () => void
  */
-export default function TriviaModal({ question, triviaState, dateStr, onAnswer, onClose }) {
+export default function TriviaModal({ question, triviaState, dateStr, onAnswer, onClose, triviaPoints = 0, currentStreak = 0, lastPointsEarned = null }) {
   const alreadyAnswered = triviaState.answers?.[dateStr] !== undefined
   const answeredCorrect = triviaState.answers?.[dateStr] === true
 
-  const [selected,   setSelected]   = useState(null)   // index of chosen answer
-  const [locked,     setLocked]     = useState(false)
-  const [feedback,   setFeedback]   = useState(null)   // 'correct' | 'wrong'
-  const [revealed,   setRevealed]   = useState(false)
+  const [selected,      setSelected]      = useState(null)   // index of chosen answer
+  const [locked,        setLocked]        = useState(false)
+  const [feedback,      setFeedback]      = useState(null)   // 'correct' | 'wrong'
+  const [revealed,      setRevealed]      = useState(false)
+  const [pointsPreview, setPointsPreview] = useState(null)
 
   // Format the date nicely: "Thursday, May 15"
   function formatDate(str) {
@@ -44,9 +49,18 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
     const correct = idx === question.correctIndex
     setFeedback(correct ? 'correct' : 'wrong')
     setRevealed(true)
+    // Compute preview points for display (10 base + streak bonus + daily bonus)
+    if (correct) {
+      let preview = 10
+      const newStreak = currentStreak + 1
+      if (newStreak >= 5) preview += 10
+      else if (newStreak >= 3) preview += 5
+      if (!triviaState.answers?.[dateStr]) preview += 5
+      setPointsPreview(preview)
+    }
     setTimeout(() => {
-      onAnswer(correct)
-    }, 1500)
+      onAnswer(correct, { titleId: question.titleId })
+    }, 1800)
   }
 
   function buttonStyle(idx) {
@@ -101,10 +115,19 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
                   </span>
                 </div>
               )}
-              <div className="flex items-center gap-1 bg-[#0a0a0a] border border-[#222] rounded-full px-3 py-1">
-                <span className="text-[#F5C518] text-xs">★</span>
-                <span className="text-white text-xs font-bold">{triviaState.score}</span>
-                <span className="text-[#555] text-xs">pts</span>
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1 bg-[#0a0a0a] border border-[#222] rounded-full px-3 py-1">
+                  <span className="text-[#F5C518] text-xs">⭐</span>
+                  <span className="text-white text-xs font-bold">{triviaPoints.toLocaleString()}</span>
+                  <span className="text-[#555] text-xs">pts</span>
+                </div>
+                {currentStreak >= 2 && (
+                  <div className="flex items-center gap-1 bg-[#1a0500] border border-[#E81C2E]/20 rounded-full px-2 py-0.5">
+                    <span className="text-[10px] text-[#E81C2E] font-bold">
+                      {currentStreak >= 5 ? '🔥🔥' : '🔥'} {currentStreak} correct
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -140,13 +163,25 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
 
               <div className="flex items-center justify-center gap-4 mb-5">
                 <div className="text-center">
-                  <p className="font-bebas text-3xl text-[#F5C518] tracking-wide">{triviaState.score}</p>
-                  <p className="text-[#555] text-xs">Total Score</p>
+                  <p className="font-bebas text-3xl text-[#F5C518] tracking-wide">{triviaPoints.toLocaleString()}</p>
+                  <p className="text-[#555] text-xs">Total Points</p>
                 </div>
                 <div className="w-px h-10 bg-[#1e1e1e]" />
                 <div className="text-center">
                   <p className="font-bebas text-3xl text-white tracking-wide">🔥 {triviaState.streak}</p>
                   <p className="text-[#555] text-xs">Day Streak</p>
+                </div>
+              </div>
+
+              {/* Rank summary */}
+              <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl p-3 mb-4">
+                <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1.5">Your Rank</div>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-2xl">{getRankIcon(triviaPoints)}</div>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-white">{getRankLabel(triviaPoints)}</div>
+                    <div className="text-[10px] text-[#555]">{triviaPoints.toLocaleString()} total pts</div>
+                  </div>
                 </div>
               </div>
 
@@ -194,7 +229,21 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
                   }`}
                   style={{ animation: 'triviaFeedback 0.25s ease both' }}
                 >
-                  {feedback === 'correct' ? '✓ CORRECT! +1' : '✗ WRONG!'}
+                  {feedback === 'correct' ? (
+                    <div>
+                      <div>✓ CORRECT!</div>
+                      {pointsPreview && (
+                        <div className="text-sm text-green-400 mt-0.5">
+                          +{pointsPreview} pts
+                          {pointsPreview > 10 && (
+                            <span className="text-[11px] text-green-500/80 ml-1">
+                              (streak bonus!)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : '✗ WRONG! Streak reset.'}
                 </div>
               )}
 

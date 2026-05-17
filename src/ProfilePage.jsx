@@ -3,6 +3,11 @@ import { calcStreak, calcLongestStreak } from './data/achievements.js'
 import { LOCK_TIERS, LOCK_TIER_ORDER } from './data/locks.js'
 import { SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
 import { AvatarDisplay, MARVEL_AVATARS } from './AvatarDisplay.jsx'
+import TriviaRankBadge from './TriviaRankBadge.jsx'
+import XPProgressBar from './XPProgressBar.jsx'
+import { BADGES, BADGE_MAP } from './data/badges.js'
+import { PERSONALITY_MAP } from './data/marvelPersonality.js'
+import { BANNER_MAP } from './ProfileBannerPicker.jsx'
 
 const LIST_OPTS = [
   { id: 'rookie',   label: 'Rookie',   count: '58' },
@@ -42,6 +47,16 @@ export default function ProfilePage({
   onSignOut,      // () → void — called after confirmed sign out
   onShowFriends,  // () → void — open Friends page
   userId,         // string | undefined — current auth user id
+  triviaState = {},
+  onOpenLeaderboard,
+  xp = 0,
+  earnedBadges = {},
+  personalityType = null,
+  profileBanner = 'none',
+  onOpenBadges,
+  onOpenPersonality,
+  onOpenYearInReview,
+  onOpenBannerPicker,
 }) {
   const [editing,         setEditing]         = useState(false)
   const [confirmSignOut,  setConfirmSignOut]   = useState(false)
@@ -155,6 +170,22 @@ export default function ProfilePage({
 
       <div className="flex-1 px-4 pb-16 max-w-lg mx-auto w-full space-y-5">
 
+        {/* ── Profile Banner ── */}
+        {(() => {
+          const banner = BANNER_MAP?.[profileBanner ?? 'none'] ?? null
+          if (!banner || banner.id === 'none') return null
+          return (
+            <div
+              className="rounded-2xl h-20 flex items-center justify-between px-4 -mb-2 relative overflow-hidden cursor-pointer"
+              style={banner.style}
+              onClick={onOpenBannerPicker}
+            >
+              <span className="text-3xl opacity-40">{banner.emoji}</span>
+              <span className="text-[9px] text-white/40 uppercase tracking-widest">Tap to change</span>
+            </div>
+          )
+        })()}
+
         {/* ── Avatar + Name card ── */}
         <div
           className="rounded-2xl border border-[#1e1e1e] p-5 flex items-center gap-4"
@@ -186,8 +217,128 @@ export default function ProfilePage({
             <div className="text-[11px] text-[#444] uppercase tracking-widest">
               {LIST_LABELS[config.listSize]} · {PACE_LABELS[config.pace]}
             </div>
+            {/* Trivia rank badge */}
+            <div className="flex items-center gap-2 mt-2">
+              <TriviaRankBadge points={triviaState.points ?? 0} size="sm" showLabel/>
+              {onOpenLeaderboard && (
+                <button
+                  onClick={onOpenLeaderboard}
+                  className="text-[9px] text-[#555] hover:text-[#E81C2E] transition-colors uppercase tracking-widest"
+                >
+                  Leaderboard →
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* ── XP Level ── */}
+        <XPProgressBar xp={xp}/>
+
+        {/* ── Badges Showcase ── */}
+        {(() => {
+          const earnedList = Object.entries(earnedBadges)
+            .filter(([, v]) => v.unlocked)
+            .map(([id]) => BADGE_MAP[id])
+            .filter(Boolean)
+            .slice(0, 3)
+          const earnedCount = Object.values(earnedBadges).filter(v => v.unlocked).length
+          return (
+            <div
+              className="rounded-2xl p-4"
+              style={{ background: '#0f0f0f', border: '1px solid #1e1e1e' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-bebas text-sm tracking-widest text-[#F5C518]">BADGES</div>
+                <button
+                  onClick={onOpenBadges}
+                  className="text-[9px] text-[#555] hover:text-[#E81C2E] transition-colors uppercase tracking-widest"
+                >
+                  View All ({earnedCount}) →
+                </button>
+              </div>
+              {earnedList.length === 0 ? (
+                <p className="text-[#444] text-xs">Watch titles and complete challenges to earn badges!</p>
+              ) : (
+                <div className="flex gap-3">
+                  {earnedList.map(badge => (
+                    <div key={badge.id} className="flex flex-col items-center gap-1 flex-1">
+                      <div className="text-2xl">{badge.icon}</div>
+                      <div className="text-[9px] text-[#555] text-center leading-snug">{badge.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* ── Marvel Personality ── */}
+        <button
+          onClick={onOpenPersonality}
+          className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+          style={{ background: '#0f0f0f', border: '1px solid #1e1e1e' }}
+        >
+          {personalityType && PERSONALITY_MAP[personalityType] ? (() => {
+            const type = PERSONALITY_MAP[personalityType]
+            return (
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: type.gradient ?? type.color + '22', border: `1px solid ${type.color}44` }}
+                >
+                  {type.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="font-bebas text-sm tracking-widest" style={{ color: type.color }}>{type.name}</div>
+                  <div className="text-[10px] text-[#555]">{type.subtitle}</div>
+                </div>
+                <span className="text-[10px] text-[#444]">→</span>
+              </div>
+            )
+          })() : (
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-[#1a1a1a]">🎭</div>
+              <div className="flex-1">
+                <div className="font-bebas text-sm tracking-widest text-white">MARVEL PERSONALITY</div>
+                <div className="text-[10px] text-[#555]">Discover your Marvel hero type</div>
+              </div>
+              <span className="text-[10px] text-[#444]">→</span>
+            </div>
+          )}
+        </button>
+
+        {/* ── Year in Review ── */}
+        <button
+          onClick={onOpenYearInReview}
+          className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+          style={{ background: '#0f0000', border: '1px solid rgba(232,28,46,0.15)' }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🎬</span>
+            <div className="flex-1">
+              <div className="font-bebas text-sm tracking-widest text-white">YEAR IN REVIEW</div>
+              <div className="text-[10px] text-[#555]">{new Date().getFullYear()} Marvel recap</div>
+            </div>
+            <span className="text-[10px] text-[#E81C2E]">View →</span>
+          </div>
+        </button>
+
+        {/* ── Change Banner ── */}
+        <button
+          onClick={onOpenBannerPicker}
+          className="w-full rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+          style={{ background: '#0f0f0f', border: '1px solid #1e1e1e' }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🖼️</span>
+            <div className="flex-1">
+              <div className="font-bebas text-sm tracking-widest text-white">PROFILE BANNER</div>
+              <div className="text-[10px] text-[#555]">{BANNER_MAP?.[profileBanner]?.label ?? 'None'} — tap to change</div>
+            </div>
+            <span className="text-[10px] text-[#444]">→</span>
+          </div>
+        </button>
 
         {/* ── Avatar picker (editing only) ── */}
         {editing && (

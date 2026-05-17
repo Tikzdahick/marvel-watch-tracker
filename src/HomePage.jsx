@@ -14,6 +14,10 @@
 import { useMemo, useState, useEffect } from 'react'
 import { AvatarDisplay } from './AvatarDisplay.jsx'
 import { calcStreak } from './data/achievements.js'
+import XPProgressBar from './XPProgressBar.jsx'
+import DailyMissionsWidget from './DailyMissionsWidget.jsx'
+import WeeklySeasonWidget from './WeeklySeasonWidget.jsx'
+import DebateWidget from './DebateWidget.jsx'
 
 const DOOMSDAY = new Date('2026-12-18T00:00:00')
 
@@ -104,6 +108,7 @@ export default function HomePage({
   profile, stats, nextUp, loginDates, watchHistory, onNavigate,
   dailyFact, triviaState, parties, activeMood,
   onOpenMoodPicker, onOpenTrivia, onOpenWatchParty, onOpenTierList,
+  xp = 0, weeklyState = {}, seasonState = {}, debateState = {}, onDebateVote,
 }) {
   const { watchedCount, total, remaining, pct, unlockedAchievements } = stats
 
@@ -215,6 +220,9 @@ export default function HomePage({
       {/* ── Body ── */}
       <div className="max-w-lg mx-auto px-5 w-full space-y-4 mt-5">
 
+        {/* XP Level Bar */}
+        <XPProgressBar xp={xp} compact={false}/>
+
         {/* Motivational message */}
         <div
           className="rounded-2xl px-5 py-4"
@@ -224,6 +232,29 @@ export default function HomePage({
             "{doomMsg}"
           </p>
         </div>
+
+        {/* Daily Missions */}
+        <DailyMissionsWidget
+          dateStr={new Date().toISOString().slice(0, 10)}
+          activity={{
+            watchedToday: Object.values(watchHistory ?? {}).filter(ids => {
+              const today = new Date().toISOString().slice(0, 10)
+              return Object.keys(watchHistory ?? {}).includes(today)
+            }).length,
+            loggedIn: true,
+            triviaAnswered: !!(triviaState?.answers?.[new Date().toISOString().slice(0, 10)]),
+            currentStreak: calcStreak(Object.keys(watchHistory ?? {})),
+          }}
+          onNavigate={onNavigate}
+        />
+
+        {/* Weekly Challenge + Season Pass */}
+        <WeeklySeasonWidget
+          dateStr={new Date().toISOString().slice(0, 10)}
+          weeklyState={weeklyState}
+          seasonState={seasonState}
+          onNavigate={onNavigate}
+        />
 
         {/* Next Up */}
         {nextUp && (
@@ -356,6 +387,13 @@ export default function HomePage({
             </button>
           </div>
         </div>
+
+        {/* Daily Debate */}
+        <DebateWidget
+          dateStr={new Date().toISOString().slice(0, 10)}
+          debateState={debateState}
+          onVote={onDebateVote}
+        />
 
         {/* Daily Fact */}
         {dailyFact && (

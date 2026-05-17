@@ -9,6 +9,43 @@
  *
  * ── Required tables (create in Supabase → SQL Editor) ──────────────────────
  *
+ * -- public.user_blocks (block list)
+ * -- create table public.user_blocks (
+ * --   id         uuid primary key default gen_random_uuid(),
+ * --   blocker_id uuid not null references auth.users(id) on delete cascade,
+ * --   blocked_id uuid not null references auth.users(id) on delete cascade,
+ * --   created_at timestamptz default now(),
+ * --   unique (blocker_id, blocked_id)
+ * -- );
+ * -- alter table public.user_blocks enable row level security;
+ * -- create policy "Users manage own blocks"
+ * --   on public.user_blocks for all using (auth.uid() = blocker_id);
+ *
+ * -- public.user_mutes (mute list)
+ * -- create table public.user_mutes (
+ * --   id        uuid primary key default gen_random_uuid(),
+ * --   muter_id  uuid not null references auth.users(id) on delete cascade,
+ * --   muted_id  uuid not null references auth.users(id) on delete cascade,
+ * --   created_at timestamptz default now(),
+ * --   unique (muter_id, muted_id)
+ * -- );
+ * -- alter table public.user_mutes enable row level security;
+ * -- create policy "Users manage own mutes"
+ * --   on public.user_mutes for all using (auth.uid() = muter_id);
+ *
+ * -- public.user_reports (user profile reports)
+ * -- create table public.user_reports (
+ * --   id          uuid primary key default gen_random_uuid(),
+ * --   reporter_id uuid not null references auth.users(id) on delete cascade,
+ * --   reported_id uuid not null references auth.users(id) on delete cascade,
+ * --   reason      text,
+ * --   created_at  timestamptz default now(),
+ * --   unique (reporter_id, reported_id)
+ * -- );
+ * -- alter table public.user_reports enable row level security;
+ * -- create policy "Users manage own user reports"
+ * --   on public.user_reports for all using (auth.uid() = reporter_id);
+ *
  * -- public.user_profiles (extended profile, readable by all authenticated users)
  * create table public.user_profiles (
  *   id           uuid primary key references auth.users(id) on delete cascade,
@@ -101,6 +138,46 @@
  * alter table public.post_reports enable row level security;
  * create policy "Users manage own reports"
  *   on public.post_reports for all using (auth.uid() = user_id);
+ *
+ * -- public.trivia_scores (one row per user, upserted after each answer)
+ * create table public.trivia_scores (
+ *   user_id     uuid primary key references auth.users(id) on delete cascade,
+ *   username    text,
+ *   avatar      text,
+ *   points      int4 default 0,
+ *   streak      int4 default 0,
+ *   rank_key    text default 'civilian',
+ *   week_points int4 default 0,
+ *   week_start  text,
+ *   updated_at  timestamptz default now()
+ * );
+ * alter table public.trivia_scores enable row level security;
+ * create policy "Trivia scores readable by authenticated"
+ *   on public.trivia_scores for select using (auth.role() = 'authenticated');
+ * create policy "Users manage own trivia score"
+ *   on public.trivia_scores for all using (auth.uid() = user_id);
+ *
+ * -- public.trivia_challenges (friend duels)
+ * create table public.trivia_challenges (
+ *   id              uuid primary key default gen_random_uuid(),
+ *   challenger_id   uuid references auth.users(id) on delete cascade,
+ *   challenged_id   uuid references auth.users(id) on delete cascade,
+ *   question_ids    int4[] not null,
+ *   challenger_score int4,
+ *   challenged_score int4,
+ *   status          text default 'pending' check (status in ('pending','completed','expired')),
+ *   created_at      timestamptz default now(),
+ *   expires_at      timestamptz default (now() + interval '24 hours')
+ * );
+ * alter table public.trivia_challenges enable row level security;
+ * create policy "Participants can see their challenges"
+ *   on public.trivia_challenges for select
+ *   using (auth.uid() = challenger_id or auth.uid() = challenged_id);
+ * create policy "Challenger can create"
+ *   on public.trivia_challenges for insert using (auth.uid() = challenger_id);
+ * create policy "Participants can update"
+ *   on public.trivia_challenges for update
+ *   using (auth.uid() = challenger_id or auth.uid() = challenged_id);
  */
 
 import { getSupabase } from './supabase.js'
@@ -317,4 +394,154 @@ export function subscribeToPostLikes(postId, onChange) {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'post_likes', filter: `post_id=eq.${postId}` }, onChange)
     .subscribe()
   return () => s.removeChannel(channel)
+}
+
+// ── Block / Mute ───────────────────────────────────────────────────────────────
+
+/** Block a user */
+export async function blockUser(blockerId, blockedId) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('user_blocks').upsert({ blocker_id: blockerId, blocked_id: blockedId })
+}
+
+/** Unblock a user */
+export async function unblockUser(blockerId, blockedId) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('user_blocks').delete().eq('blocker_id', blockerId).eq('blocked_id', blockedId)
+}
+
+/** Fetch the current user's block list */
+export async function fetchBlocked(userId) {
+  const s = sb(); if (!s) return noClient()
+  return s
+    .from('user_blocks')
+    .select('blocked_id, profile:blocked_id ( id, username, avatar )')
+    .eq('blocker_id', userId)
+}
+
+/** Mute a user */
+export async function muteUser(muterId, mutedId) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('user_mutes').upsert({ muter_id: muterId, muted_id: mutedId })
+}
+
+/** Unmute a user */
+export async function unmuteUser(muterId, mutedId) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('user_mutes').delete().eq('muter_id', muterId).eq('muted_id', mutedId)
+}
+
+/** Fetch the current user's mute list */
+export async function fetchMuted(userId) {
+  const s = sb(); if (!s) return noClient()
+  return s
+    .from('user_mutes')
+    .select('muted_id, profile:muted_id ( id, username, avatar )')
+    .eq('muter_id', userId)
+}
+
+/** Report a user profile */
+export async function reportUser(reporterId, reportedId, reason = '') {
+  const s = sb(); if (!s) return noClient()
+  return s.from('user_reports').upsert({ reporter_id: reporterId, reported_id: reportedId, reason })
+}
+
+/** Enhanced post report with category */
+export async function reportPostEnhanced(postId, userId, category = 'other') {
+  const s = sb(); if (!s) return noClient()
+  return s.from('post_reports').upsert({ post_id: postId, user_id: userId, reason: category })
+}
+
+/** Get report count for a post */
+export async function getPostReportCount(postId) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('post_reports').select('id', { count: 'exact' }).eq('post_id', postId)
+}
+
+// ── Trivia Leaderboard ─────────────────────────────────────────────────────────
+
+/** Upsert the current user's trivia score to Supabase */
+export async function upsertTriviaScore(userId, { username, avatar, points, streak, rankKey, weekPoints, weekStart }) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('trivia_scores').upsert({
+    user_id:     userId,
+    username,
+    avatar,
+    points:      points ?? 0,
+    streak:      streak ?? 0,
+    rank_key:    rankKey ?? 'civilian',
+    week_points: weekPoints ?? 0,
+    week_start:  weekStart ?? null,
+    updated_at:  new Date().toISOString(),
+  })
+}
+
+/** Fetch all-time top N trivia leaderboard */
+export async function fetchTriviaLeaderboard(limit = 100) {
+  const s = sb(); if (!s) return noClient()
+  return s
+    .from('trivia_scores')
+    .select('user_id, username, avatar, points, streak, rank_key, week_points')
+    .order('points', { ascending: false })
+    .limit(limit)
+}
+
+/** Fetch weekly top N trivia leaderboard */
+export async function fetchWeeklyTriviaLeaderboard(weekStart, limit = 100) {
+  const s = sb(); if (!s) return noClient()
+  return s
+    .from('trivia_scores')
+    .select('user_id, username, avatar, points, streak, rank_key, week_points')
+    .eq('week_start', weekStart)
+    .order('week_points', { ascending: false })
+    .limit(limit)
+}
+
+/** Fetch leaderboard restricted to a list of friend user IDs + self */
+export async function fetchFriendsTriviaLeaderboard(userIds) {
+  const s = sb(); if (!s) return noClient()
+  if (!userIds.length) return { data: [], error: null }
+  return s
+    .from('trivia_scores')
+    .select('user_id, username, avatar, points, streak, rank_key, week_points')
+    .in('user_id', userIds)
+    .order('points', { ascending: false })
+}
+
+// ── Trivia Challenges (Duels) ──────────────────────────────────────────────────
+
+/** Create a trivia challenge */
+export async function createTriviaChallenge(challengerId, challengedId, questionIds, challengerScore = null) {
+  const s = sb(); if (!s) return noClient()
+  return s.from('trivia_challenges').insert({
+    challenger_id:   challengerId,
+    challenged_id:   challengedId,
+    question_ids:    questionIds,
+    challenger_score: challengerScore,
+    status: 'pending',
+  }).select().single()
+}
+
+/** Fetch pending challenges for a user (both as challenger and challenged) */
+export async function fetchPendingChallenges(userId) {
+  const s = sb(); if (!s) return noClient()
+  return s
+    .from('trivia_challenges')
+    .select(`
+      id, question_ids, challenger_score, challenged_score, status, created_at, expires_at,
+      challenger:challenger_id ( id, username, avatar ),
+      challenged:challenged_id ( id, username, avatar )
+    `)
+    .or(`challenger_id.eq.${userId},challenged_id.eq.${userId}`)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+}
+
+/** Submit the challenged user's score to complete a duel */
+export async function submitChallengeScore(challengeId, score, isChallenger) {
+  const s = sb(); if (!s) return noClient()
+  const update = isChallenger
+    ? { challenger_score: score }
+    : { challenged_score: score, status: 'completed' }
+  return s.from('trivia_challenges').update(update).eq('id', challengeId)
 }

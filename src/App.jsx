@@ -20,7 +20,29 @@ import { AvatarDisplay } from './AvatarDisplay.jsx'
 import { getDailyQuestion } from './data/trivia.js'
 import { MOODS, getRecommendations } from './data/recommendations.js'
 import { getDailyFact } from './data/facts.js'
+import SplashScreen from './SplashScreen.jsx'
+import { ConfettiExplosion, EraCompleteBanner, MilestoneBanner } from './Confetti.jsx'
+import OnboardingTutorial from './OnboardingTutorial.jsx'
+import { playWatchSound, playAchievementSound, playEraCompleteSound, playMilestoneSound, setSoundsEnabled } from './lib/sounds.js'
+import TriviaRankBadge from './TriviaRankBadge.jsx'
+import TriviaLeaderboard from './TriviaLeaderboard.jsx'
+import TriviaDuelModal from './TriviaDuelModal.jsx'
+import { getRank, calcPointsEarned, getWeekStart } from './data/triviaRanks.js'
+import { upsertTriviaScore } from './lib/supabaseHelpers.js'
 import { useAuth, SUPABASE_ENABLED } from './hooks/useAuth.js'
+import XPProgressBar from './XPProgressBar.jsx'
+import LevelUpModal from './LevelUpModal.jsx'
+import DailyMissionsWidget from './DailyMissionsWidget.jsx'
+import WeeklySeasonWidget from './WeeklySeasonWidget.jsx'
+import BadgesCollection from './BadgesCollection.jsx'
+import MarvelPersonalityCard from './MarvelPersonalityCard.jsx'
+import DebateWidget from './DebateWidget.jsx'
+import YearInReview from './YearInReview.jsx'
+import ThemePicker from './ThemePicker.jsx'
+import ProfileBannerPicker, { BANNERS, BANNER_MAP } from './ProfileBannerPicker.jsx'
+import { getLevel, getNextLevel, XP_EVENTS } from './data/xpSystem.js'
+import { BADGES, checkBadges, BADGE_MAP } from './data/badges.js'
+import { getTheme, getThemeCSS } from './data/themes.js'
 import { ERAS, ERA_FOR_ID, getEraForId } from './data/eras.js'
 import {
   TITLES, DEFAULT_WATCHED, getTitlesForListSize, TIER_MAP, getRuntimeMinutes,
@@ -34,6 +56,17 @@ import {
 } from './data/locks.js'
 import { fetchFriendships } from './lib/supabaseHelpers.js'
 
+// ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
+const ERA_COLORS = {
+  blade:    '#E81C2E',
+  xmen:     '#a78bfa',
+  early:    '#F5C518',
+  netflix:  '#f87171',
+  infinity: '#F5C518',
+  disney:   '#60a5fa',
+  recent:   '#4ade80',
+}
+
 // ── Storage keys ──────────────────────────────────────────────────────────────
 const SK_CONFIG       = 'mvt-config'
 const SK_WATCHED      = 'mvt-watched-v1'
@@ -44,8 +77,20 @@ const SK_REWATCHES    = 'mvt-rewatches'
 const SK_SPOILER_FREE = 'mvt-spoiler-free'
 const SK_TRIVIA       = 'mvt-trivia'
 const SK_PARTIES      = 'mvt-parties'
-const SK_TAGGED       = 'mvt-tagged-watches'
-const SK_LOGIN        = 'mvt-login-dates'
+const SK_TAGGED         = 'mvt-tagged-watches'
+const SK_SOUNDS         = 'mvt-sounds'
+const SK_TUTORIAL_DONE  = 'mvt-tutorial-done'
+const SK_SHOWN_MILES    = 'mvt-shown-milestones'
+const SK_XP             = 'mvt-xp'
+const SK_BADGES         = 'mvt-badges'
+const SK_WEEKLY_STATE   = 'mvt-weekly-state'
+const SK_SEASON_STATE   = 'mvt-season-state'
+const SK_DEBATE         = 'mvt-debate'
+const SK_PREDICTIONS    = 'mvt-predictions'
+const SK_PERSONALITY    = 'mvt-personality'
+const SK_THEME          = 'mvt-theme'
+const SK_BANNER         = 'mvt-banner'
+const SK_LOGIN          = 'mvt-login-dates'
 const SK_ACHIEVEMENTS = 'mvt-achievements'
 const SK_ONBOARDED    = 'mvt-onboarded'
 const SK_PROFILE      = 'mvt-profile'
@@ -339,6 +384,32 @@ function StatPill({ label, value, color }) {
   )
 }
 
+// ── Rank-Up Banner ────────────────────────────────────────────────────────────
+function RankUpBanner({ newRank, onDone }) {
+  useEffect(() => { const t = setTimeout(onDone, 4500); return () => clearTimeout(t) }, [onDone])
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-4" style={{ zIndex: 10002, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(10px)' }}>
+      <div
+        className="w-full max-w-xs rounded-3xl border p-8 text-center"
+        style={{
+          background: 'linear-gradient(135deg, #0a0a00 0%, #0a0a0a 100%)',
+          borderColor: newRank.border,
+          boxShadow: newRank.glow,
+          animation: 'completionPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both',
+        }}
+      >
+        <div className="text-[10px] uppercase tracking-[0.3em] mb-3" style={{ color: newRank.color }}>
+          ✦ RANK UP ✦
+        </div>
+        <div className="text-5xl mb-3">{newRank.icon}</div>
+        <div className="font-bebas text-3xl tracking-[0.15em] text-white mb-1">{newRank.label}</div>
+        <div className="text-sm mb-5" style={{ color: newRank.color }}>You've reached a new rank!</div>
+        <button onClick={onDone} className="text-[#444] text-xs hover:text-white transition-colors">Dismiss</button>
+      </div>
+    </div>
+  )
+}
+
 // ── Isolated countdown (only this re-renders every second) ───────────────────
 function CountdownTicker() {
   const [cd, setCd] = useState(() => calcCountdown(DOOMSDAY))
@@ -465,7 +536,7 @@ function CompletionModal({ config, watchedCount, achievementsUnlocked, onClose }
 }
 
 // ── Settings Modal ────────────────────────────────────────────────────────────
-function SettingsModal({ config, onUpdate, onClose, spoilerFree, onToggleSpoilerFree }) {
+function SettingsModal({ config, onUpdate, onClose, spoilerFree, onToggleSpoilerFree, soundsEnabled, onToggleSounds, onReplayTutorial, onOpenThemes }) {
   const [listSize, setListSize] = useState(config.listSize)
   const [pace, setPace]         = useState(config.pace)
 
@@ -538,6 +609,45 @@ function SettingsModal({ config, onUpdate, onClose, spoilerFree, onToggleSpoiler
               Synopses, facts, and characters are blurred until you've marked a title watched.
             </p>
           )}
+        </div>
+
+        {/* Sound Effects toggle */}
+        <div className="mb-5">
+          <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2">Sound Effects</div>
+          <button
+            onClick={onToggleSounds}
+            className={`w-full py-2.5 rounded-xl text-sm font-semibold border transition-all flex items-center justify-between px-4 ${
+              soundsEnabled
+                ? 'bg-[#F5C518]/10 border-[#F5C518]/30 text-[#F5C518]'
+                : 'bg-[#151515] border-[#222] text-[#555] hover:text-white'
+            }`}
+          >
+            <span>{soundsEnabled ? '🔊 On — satisfying check sounds' : '🔇 Off — silent mode'}</span>
+            <span className={`w-8 h-4 rounded-full flex-shrink-0 transition-all relative ${soundsEnabled ? 'bg-[#F5C518]' : 'bg-[#333]'}`}>
+              <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${soundsEnabled ? 'left-4' : 'left-0.5'}`}/>
+            </span>
+          </button>
+        </div>
+
+        {/* Tutorial replay */}
+        <div className="mb-3">
+          <button
+            onClick={() => { onClose(); setTimeout(onReplayTutorial, 200) }}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold border border-[#222] text-[#555] hover:text-white hover:border-[#333] transition-all bg-[#111]"
+          >
+            🎓 Replay Tutorial
+          </button>
+        </div>
+
+        {/* App Theme */}
+        <div className="mb-6">
+          <button
+            onClick={() => { onClose(); setTimeout(onOpenThemes, 200) }}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold border border-[#222] text-[#555] hover:text-white hover:border-[#333] transition-all bg-[#111] flex items-center justify-between px-4"
+          >
+            <span>🎨 App Theme</span>
+            <span className="text-[10px] text-[#444]">Change colors →</span>
+          </button>
         </div>
 
         <button
@@ -713,6 +823,49 @@ export default function App() {
   // tagged watches: { [titleId]: string[] (friendIds) }
   const [taggedWatches, setTaggedWatches] = useState(() => loadJSON(SK_TAGGED, {}))
 
+  // ── Trivia rank system state ──
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showDuel,        setShowDuel]        = useState(false)
+  const [rankUp,          setRankUp]          = useState(null)   // rank object | null
+  const prevRankKey = useRef(null) // track rank changes
+
+  // ── Phase 4 feature state ──
+  const [xp,             setXp]             = useState(() => loadJSON(SK_XP, 0))
+  const [earnedBadges,   setEarnedBadges]   = useState(() => loadJSON(SK_BADGES, {}))
+  const [weeklyState,    setWeeklyState]    = useState(() => loadJSON(SK_WEEKLY_STATE, {}))
+  const [seasonState,    setSeasonState]    = useState(() => loadJSON(SK_SEASON_STATE, {}))
+  const [debateState,    setDebateState]    = useState(() => loadJSON(SK_DEBATE, {}))
+  const [predictions,    setPredictions]    = useState(() => loadJSON(SK_PREDICTIONS, {}))
+  const [personalityType,setPersonalityType]= useState(() => loadJSON(SK_PERSONALITY, null))
+  const [appTheme,       setAppTheme]       = useState(() => loadJSON(SK_THEME, 'default'))
+  const [profileBanner,  setProfileBanner]  = useState(() => loadJSON(SK_BANNER, 'none'))
+  // Level-up modal
+  const [levelUp,        setLevelUp]        = useState(null) // level object | null
+  const prevLevelKey = useRef(null)
+  // New overlays
+  const [showBadges,       setShowBadges]       = useState(false)
+  const [showPersonality,  setShowPersonality]  = useState(false)
+  const [showYearInReview, setShowYearInReview] = useState(false)
+  const [showThemePicker,  setShowThemePicker]  = useState(false)
+  const [showBannerPicker, setShowBannerPicker] = useState(false)
+
+  // ── New feature state (Features 1-4, 8) ──
+  // Splash screen (once per session)
+  const [showSplash,     setShowSplash]     = useState(true)
+  // Sound effects toggle
+  const [soundsEnabled,  setSoundsState]    = useState(() => loadJSON(SK_SOUNDS, true))
+  // Tutorial
+  const [tutorialDone,   setTutorialDone]   = useState(() => loadJSON(SK_TUTORIAL_DONE, false))
+  const [showTutorial,   setShowTutorial]   = useState(false)
+  // Confetti / celebration state
+  const [confetti,       setConfetti]       = useState(false)
+  const [eraComplete,    setEraComplete]    = useState(null)  // { name, color } | null
+  const [milestone,      setMilestone]      = useState(null)  // 25|50|75|100 | null
+  // Track which milestones already celebrated (persist so it only fires once ever)
+  const shownMilestones = useRef(new Set(loadJSON(SK_SHOWN_MILES, [])))
+  // Track era completion (so we only celebrate the *transition* to complete)
+  const prevEraComplete = useRef({})
+
   const shownCompletion = useRef(false)
   const isInitialMount  = useRef(true)
 
@@ -745,6 +898,19 @@ export default function App() {
   useEffect(() => { saveJSON(SK_TRIVIA,       triviaState) },  [triviaState])
   useEffect(() => { saveJSON(SK_PARTIES,      parties) },      [parties])
   useEffect(() => { saveJSON(SK_TAGGED,       taggedWatches) },[taggedWatches])
+  useEffect(() => { saveJSON(SK_SOUNDS,       soundsEnabled) }, [soundsEnabled])
+  useEffect(() => { saveJSON(SK_TUTORIAL_DONE,tutorialDone) },  [tutorialDone])
+  useEffect(() => { saveJSON(SK_XP,           xp) },            [xp])
+  useEffect(() => { saveJSON(SK_BADGES,       earnedBadges) },  [earnedBadges])
+  useEffect(() => { saveJSON(SK_WEEKLY_STATE, weeklyState) },   [weeklyState])
+  useEffect(() => { saveJSON(SK_SEASON_STATE, seasonState) },   [seasonState])
+  useEffect(() => { saveJSON(SK_DEBATE,       debateState) },   [debateState])
+  useEffect(() => { saveJSON(SK_PREDICTIONS,  predictions) },   [predictions])
+  useEffect(() => { saveJSON(SK_PERSONALITY,  personalityType) },[personalityType])
+  useEffect(() => { saveJSON(SK_THEME,        appTheme) },      [appTheme])
+  useEffect(() => { saveJSON(SK_BANNER,       profileBanner) }, [profileBanner])
+  // Sync sounds module flag whenever toggle changes
+  useEffect(() => { setSoundsEnabled(soundsEnabled) }, [soundsEnabled])
 
   // ── Daily reminder notification ──
   useEffect(() => {
@@ -767,6 +933,59 @@ export default function App() {
     return () => clearTimeout(timer)
   }, [reminder, listTitles, watched, lockPins, unlockedTiers])
 
+  // ── Show tutorial once after first onboarding ──
+  useEffect(() => {
+    if (onboarded && profile && !tutorialDone) {
+      const t = setTimeout(() => setShowTutorial(true), 1000)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onboarded, profile])
+
+  // ── Milestone celebration (25 / 50 / 75 / 100 %) ──
+  useEffect(() => {
+    if (isInitialMount.current) return
+    for (const m of [25, 50, 75, 100]) {
+      if (pct >= m && !shownMilestones.current.has(m)) {
+        shownMilestones.current.add(m)
+        saveJSON(SK_SHOWN_MILES, [...shownMilestones.current])
+        const t = setTimeout(() => {
+          setMilestone(m)
+          setConfetti(true)
+          if (soundsEnabled) playMilestoneSound()
+          setTimeout(() => setConfetti(false), 3000)
+        }, 600)
+        return () => clearTimeout(t)
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pct])
+
+  // ── Era completion celebration ──
+  useEffect(() => {
+    if (isInitialMount.current) return
+    for (const era of ERAS) {
+      if (era.key === 'soon') continue
+      const eraTitles = listTitles.filter(t => ERA_FOR_ID[t.id] === era.key && !t.comingSoon)
+      if (eraTitles.length === 0) continue
+      const allWatched = eraTitles.every(t => watched.has(t.id))
+      if (allWatched && !prevEraComplete.current[era.key]) {
+        prevEraComplete.current[era.key] = true
+        const eraColor = ERA_COLORS[era.key] ?? '#E81C2E'
+        setTimeout(() => {
+          setEraComplete({ name: era.label, color: eraColor })
+          setConfetti(true)
+          if (soundsEnabled) playEraCompleteSound()
+          setTimeout(() => setConfetti(false), 3000)
+        }, 500)
+        break
+      } else if (!allWatched) {
+        prevEraComplete.current[era.key] = false
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watched])
+
   // ── Scroll to random pick ──
   useEffect(() => {
     if (!randomPickId) return
@@ -779,8 +998,9 @@ export default function App() {
     if (!currentToast && toastQueue.length > 0) {
       setCurrentToast(toastQueue[0])
       setToastQueue(q => q.slice(1))
+      if (soundsEnabled) playAchievementSound()
     }
-  }, [currentToast, toastQueue])
+  }, [currentToast, toastQueue, soundsEnabled])
 
   // ── Check achievements ──
   const runAchievementCheck = useCallback((newWatched, newHistory) => {
@@ -867,12 +1087,16 @@ export default function App() {
     })
 
     if (isMarkingWatched) {
+      // Play watch sound
+      if (soundsEnabled) playWatchSound()
+      // Earn XP
+      earnXP(XP_EVENTS?.WATCH ?? 50)
       // Clear any in-progress status
       setInProgress(prev => { const n = { ...prev }; delete n[id]; return n })
       // Show tier prompt (skipping rating modal — rating is inside TitleDetailModal)
       setTimeout(() => setShowTierPrompt(id), 300)
     }
-  }, [runAchievementCheck, watched, lockPins, unlockedTiers])
+  }, [runAchievementCheck, watched, lockPins, unlockedTiers, soundsEnabled])
 
   // ── Stats ──
   const total      = listTitles.length
@@ -1054,20 +1278,137 @@ export default function App() {
     })
   }
 
-  // ── Trivia answer ──
-  function handleTriviaAnswer(correct) {
+  // ── Trivia answer (enhanced with points + era tracking) ──
+  function handleTriviaAnswer(correct, meta = {}) {
     const today = getTodayDateStr()
     setTriviaState(prev => {
+      // Daily streak (consecutive days answered correctly)
       const wasStreakYesterday = prev.lastDate
-        ? (new Date(today) - new Date(prev.lastDate)) / 86400000 <= 1
+        ? (new Date(today + 'T00:00:00') - new Date(prev.lastDate + 'T00:00:00')) / 86400000 <= 1
         : false
-      return {
-        score:    prev.score + (correct ? 1 : 0),
-        streak:   correct ? (wasStreakYesterday ? prev.streak + 1 : 1) : 0,
-        lastDate: today,
-        answers:  { ...prev.answers, [today]: correct },
+      const newDailyStreak = correct ? (wasStreakYesterday ? (prev.streak || 0) + 1 : 1) : 0
+
+      // Consecutive-correct streak (resets on wrong)
+      const newCurrentStreak = correct ? (prev.currentStreak || 0) + 1 : 0
+
+      // Points earned
+      const pointsEarned = calcPointsEarned(correct, prev, today)
+      const newPoints = (prev.points || 0) + pointsEarned
+
+      // Weekly points
+      const weekStart = getWeekStart(today)
+      const newWeekPoints = prev.weekStart === weekStart
+        ? (prev.weekPoints || 0) + pointsEarned
+        : pointsEarned
+
+      // Era correct tracking
+      const eraKey = meta.titleId != null ? ERA_FOR_ID[meta.titleId] : null
+      const newEraCorrect = { ...(prev.eraCorrect || {}) }
+      if (correct && eraKey) newEraCorrect[eraKey] = (newEraCorrect[eraKey] || 0) + 1
+
+      // Points history
+      const newPointsHistory = { ...(prev.pointsHistory || {}) }
+      if (pointsEarned > 0) newPointsHistory[today] = (newPointsHistory[today] || 0) + pointsEarned
+
+      const next = {
+        score:         (prev.score || 0) + (correct ? 1 : 0),
+        streak:        newDailyStreak,
+        lastDate:      today,
+        answers:       { ...(prev.answers || {}), [today]: correct },
+        points:        newPoints,
+        totalAnswered: (prev.totalAnswered || 0) + 1,
+        totalCorrect:  (prev.totalCorrect || 0) + (correct ? 1 : 0),
+        bestStreak:    Math.max(prev.bestStreak || 0, newCurrentStreak),
+        currentStreak: newCurrentStreak,
+        weekPoints:    newWeekPoints,
+        weekStart,
+        eraCorrect:    newEraCorrect,
+        pointsHistory: newPointsHistory,
       }
+
+      // Detect rank-up (schedule it outside setState)
+      const oldRank = getRank(prev.points || 0)
+      const newRank = getRank(newPoints)
+      if (newRank.key !== oldRank.key && newRank.key !== prevRankKey.current) {
+        prevRankKey.current = newRank.key
+        setTimeout(() => {
+          setRankUp(newRank)
+          setConfetti(true)
+          setTimeout(() => setConfetti(false), 3000)
+        }, 2000)
+      }
+
+      // Sync to Supabase (fire and forget)
+      if (SUPABASE_ENABLED && user) {
+        upsertTriviaScore(user.id, {
+          username:   profile?.name,
+          avatar:     profile?.avatar,
+          points:     newPoints,
+          streak:     newDailyStreak,
+          rankKey:    newRank.key,
+          weekPoints: newWeekPoints,
+          weekStart,
+        }).catch(() => {})
+      }
+
+      return next
     })
+  }
+
+  // ── XP earning ──
+  function earnXP(amount) {
+    setXp(prev => {
+      const newXP = prev + amount
+      const oldLevel = getLevel(prev)
+      const newLevel = getLevel(newXP)
+      if (newLevel.key !== oldLevel.key && newLevel.key !== prevLevelKey.current) {
+        prevLevelKey.current = newLevel.key
+        setTimeout(() => { setLevelUp(newLevel); setConfetti(true); setTimeout(() => setConfetti(false), 3000) }, 1000)
+      }
+      return newXP
+    })
+  }
+
+  // ── Badge checking ──
+  function checkAndAwardBadges() {
+    const state = {
+      watchedCount: listWatchedCount,
+      totalTitles: listTitles.length,
+      watchHistory,
+      ratings,
+      triviaState,
+      friendCount: friendIds.length,
+      postCount: 0,
+      debateVotes: Object.keys(debateState).length,
+      tiers,
+      streak: 0, // derived from loginDates
+      personalityType,
+      eraComplete: prevEraComplete.current,
+    }
+    const newBadges = checkBadges(state, earnedBadges)
+    if (Object.keys(newBadges).length > 0) {
+      setEarnedBadges(prev => ({ ...prev, ...newBadges }))
+      earnXP(Object.keys(newBadges).length * (XP_EVENTS?.BADGE_EARNED ?? 20))
+    }
+  }
+
+  // ── Debate vote ──
+  function handleDebateVote(key, choice) {
+    setDebateState(prev => ({
+      ...prev,
+      [key]: {
+        vote: choice,
+        votesA: (prev[key]?.votesA ?? 50) + (choice === 'A' ? 1 : 0),
+        votesB: (prev[key]?.votesB ?? 50) + (choice === 'B' ? 1 : 0),
+      }
+    }))
+    earnXP(5)
+  }
+
+  // ── Prediction save ──
+  function handleSavePrediction(titleId, pred) {
+    setPredictions(prev => ({ ...prev, [titleId]: pred }))
+    if (pred.post !== null) earnXP(XP_EVENTS?.PREDICTION_ACE ?? 25)
   }
 
   // ── Mood + recommendations ──
@@ -1133,8 +1474,77 @@ export default function App() {
   // ── Detail modal title ──
   const detailTitle = detailModalId ? TITLES.find(t => t.id === detailModalId) : null
 
+  const currentTheme = getTheme(appTheme)
+
+  // Year in Review data derived from state
+  const currentYear = new Date().getFullYear()
+  const yearInReviewData = useMemo(() => {
+    const thisYear = currentYear
+    const watchDates2 = Object.keys(watchHistory ?? {})
+    const watchedThisYear = watchDates2.filter(d => d.startsWith(String(thisYear)))
+    const titlesWatchedThisYear = watchedThisYear.reduce((s, d) => s + (watchHistory[d]?.length ?? 0), 0)
+    const biggestBinge = watchDates2.reduce((best, d) => {
+      const cnt = watchHistory[d]?.length ?? 0
+      return cnt > best.count ? { date: d, count: cnt } : best
+    }, { date: null, count: 0 })
+    const eraCounts = {}
+    for (const id of watched) {
+      const era = ERA_FOR_ID[id]
+      if (era) eraCounts[era] = (eraCounts[era] ?? 0) + 1
+    }
+    const favoriteEra = Object.entries(eraCounts).sort((a, b) => b[1] - a[1])[0]
+    return {
+      watchedCount: titlesWatchedThisYear,
+      runtimeHours: Math.floor(
+        listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
+      ),
+      biggestBingeDate: biggestBinge.date,
+      biggestBingeCount: biggestBinge.count,
+      favoriteEra: favoriteEra ? favoriteEra[0] : null,
+      favoriteEraCount: favoriteEra ? favoriteEra[1] : 0,
+      bestStreak: triviaState.bestStreak ?? 0,
+      triviaCorrect: triviaState.totalCorrect ?? 0,
+      triviaTotal: triviaState.totalAnswered ?? 0,
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watched, watchHistory, triviaState])
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen" style={{ background: currentTheme.bg }}>
+      {/* Theme CSS injection */}
+      <style>{getThemeCSS(currentTheme)}</style>
+
+      {/* ── SPLASH SCREEN ── */}
+      {showSplash && <SplashScreen onDone={() => setShowSplash(false)}/>}
+
+      {/* ── ONBOARDING TUTORIAL ── */}
+      {showTutorial && (
+        <OnboardingTutorial onDone={() => {
+          setTutorialDone(true)
+          saveJSON(SK_TUTORIAL_DONE, true)
+          setShowTutorial(false)
+        }}/>
+      )}
+
+      {/* ── CONFETTI ── */}
+      <ConfettiExplosion active={confetti}/>
+
+      {/* ── ERA COMPLETE BANNER ── */}
+      {eraComplete && (
+        <EraCompleteBanner
+          eraName={eraComplete.name}
+          eraColor={eraComplete.color}
+          onDone={() => setEraComplete(null)}
+        />
+      )}
+
+      {/* ── MILESTONE BANNER ── */}
+      {milestone && (
+        <MilestoneBanner
+          percent={milestone}
+          onDone={() => setMilestone(null)}
+        />
+      )}
 
       {/* ── TOAST ── */}
       {currentToast && (
@@ -1154,6 +1564,10 @@ export default function App() {
           onClose={() => setShowSettings(false)}
           spoilerFree={spoilerFree}
           onToggleSpoilerFree={() => setSpoilerFree(v => !v)}
+          soundsEnabled={soundsEnabled}
+          onToggleSounds={() => setSoundsState(v => !v)}
+          onReplayTutorial={() => { setTutorialDone(false); setShowTutorial(true) }}
+          onOpenThemes={() => setShowThemePicker(true)}
         />
       )}
 
@@ -1205,6 +1619,80 @@ export default function App() {
           dateStr={todayStr2}
           onAnswer={handleTriviaAnswer}
           onClose={() => setShowTrivia(false)}
+          triviaPoints={triviaState.points ?? 0}
+          currentStreak={triviaState.currentStreak ?? 0}
+        />
+      )}
+
+      {/* ── TRIVIA LEADERBOARD ── */}
+      {showLeaderboard && (
+        <TriviaLeaderboard
+          userId={user?.id}
+          triviaState={triviaState}
+          friendIds={friendIds}
+          onClose={() => setShowLeaderboard(false)}
+        />
+      )}
+
+      {/* ── TRIVIA DUEL MODAL ── */}
+      {showDuel && (
+        <TriviaDuelModal
+          userId={user?.id}
+          friends={[]}
+          triviaState={triviaState}
+          onClose={() => setShowDuel(false)}
+        />
+      )}
+
+      {/* ── RANK UP BANNER ── */}
+      {rankUp && (
+        <RankUpBanner newRank={rankUp} onDone={() => setRankUp(null)}/>
+      )}
+
+      {/* ── LEVEL UP MODAL ── */}
+      {levelUp && (
+        <LevelUpModal newLevel={levelUp} xp={xp} onDone={() => setLevelUp(null)}/>
+      )}
+
+      {/* ── BADGES COLLECTION ── */}
+      {showBadges && (
+        <BadgesCollection earnedBadges={earnedBadges} onClose={() => setShowBadges(false)}/>
+      )}
+
+      {/* ── MARVEL PERSONALITY ── */}
+      {showPersonality && (
+        <MarvelPersonalityCard
+          ratings={ratings}
+          savedType={personalityType}
+          onClose={() => setShowPersonality(false)}
+          onSave={type => { setPersonalityType(type); earnXP(25) }}
+        />
+      )}
+
+      {/* ── YEAR IN REVIEW ── */}
+      {showYearInReview && (
+        <YearInReview
+          year={currentYear}
+          data={yearInReviewData}
+          onClose={() => setShowYearInReview(false)}
+        />
+      )}
+
+      {/* ── THEME PICKER ── */}
+      {showThemePicker && (
+        <ThemePicker
+          currentTheme={appTheme}
+          onSelect={key => setAppTheme(key)}
+          onClose={() => setShowThemePicker(false)}
+        />
+      )}
+
+      {/* ── BANNER PICKER ── */}
+      {showBannerPicker && (
+        <ProfileBannerPicker
+          currentBanner={profileBanner}
+          onSelect={id => setProfileBanner(id)}
+          onClose={() => setShowBannerPicker(false)}
         />
       )}
 
@@ -1285,6 +1773,16 @@ export default function App() {
           onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
           onShowFriends={() => { setShowProfile(false); setShowFriends(true) }}
           userId={user?.id}
+          triviaState={triviaState}
+          onOpenLeaderboard={() => { setShowProfile(false); setShowLeaderboard(true) }}
+          xp={xp}
+          earnedBadges={earnedBadges}
+          personalityType={personalityType}
+          profileBanner={profileBanner}
+          onOpenBadges={() => { setShowProfile(false); setShowBadges(true) }}
+          onOpenPersonality={() => { setShowProfile(false); setShowPersonality(true) }}
+          onOpenYearInReview={() => { setShowProfile(false); setShowYearInReview(true) }}
+          onOpenBannerPicker={() => setShowBannerPicker(true)}
         />
       )}
 
@@ -1326,6 +1824,11 @@ export default function App() {
           onOpenTrivia={() => setShowTrivia(true)}
           onOpenWatchParty={() => setShowWatchParty(true)}
           onOpenTierList={() => setShowTierList(true)}
+          xp={xp}
+          weeklyState={weeklyState}
+          seasonState={seasonState}
+          debateState={debateState}
+          onDebateVote={handleDebateVote}
           onNavigate={(tab) => {
             if (tab === 'profile') { setShowProfile(true) }
             else { setActiveTab(tab) }
@@ -1422,6 +1925,8 @@ export default function App() {
               {[
                 { label: '⭐ Tiers',       onClick: () => setShowTierList(true) },
                 { label: '🎮 Trivia',      onClick: () => setShowTrivia(true) },
+                { label: '🏆 Ranks',       onClick: () => setShowLeaderboard(true) },
+                { label: '⚔️ Duel',        onClick: () => setShowDuel(true) },
                 { label: '🎉 Watch Party', onClick: () => setShowWatchParty(true) },
                 { label: `😄 Mood${activeMood ? ' ●' : ''}`, onClick: () => setShowMoodPicker(true) },
               ].map(({ label, onClick }) => (
@@ -1608,6 +2113,7 @@ export default function App() {
           planner={planner}
           onScheduleTitle={handleScheduleTitle}
           titles={listTitles}
+          triviaState={triviaState}
         />
       )}
 
