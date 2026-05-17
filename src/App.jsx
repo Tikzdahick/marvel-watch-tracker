@@ -1156,6 +1156,35 @@ export default function App() {
     [listTitles, watched, lockPins, unlockedTiers]
   )
 
+  // ── Year in Review data (useMemo MUST be before early returns) ──
+  const currentYear = new Date().getFullYear()
+  const yearInReviewData = useMemo(() => {
+    const watchDates2 = Object.keys(watchHistory ?? {})
+    const biggestBinge = watchDates2.reduce((best, d) => {
+      const cnt = Array.isArray(watchHistory[d]) ? watchHistory[d].length : (watchHistory[d] ?? 0)
+      return cnt > best.count ? { date: d, count: cnt } : best
+    }, { date: null, count: 0 })
+    const eraCounts = {}
+    for (const id of watched) {
+      const era = ERA_FOR_ID[id]
+      if (era) eraCounts[era] = (eraCounts[era] ?? 0) + 1
+    }
+    const favoriteEra = Object.entries(eraCounts).sort((a, b) => b[1] - a[1])[0]
+    return {
+      watchedCount: watched.size,
+      runtimeHours: Math.floor(
+        listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
+      ),
+      biggestBingeDate: biggestBinge.date,
+      biggestBingeCount: biggestBinge.count,
+      favoriteEra: favoriteEra ? favoriteEra[0] : null,
+      favoriteEraCount: favoriteEra ? favoriteEra[1] : 0,
+      bestStreak: triviaState.bestStreak ?? 0,
+      triviaCorrect: triviaState.totalCorrect ?? 0,
+      triviaTotal: triviaState.totalAnswered ?? 0,
+    }
+  }, [watched, watchHistory, triviaState, listTitles])
+
   // ── Titles grouped by era (in ERAS order) ──
   const groupedByEra = useMemo(() => {
     return ERAS.map(era => ({
@@ -1476,39 +1505,6 @@ export default function App() {
   const detailTitle = detailModalId ? TITLES.find(t => t.id === detailModalId) : null
 
   const currentTheme = getTheme(appTheme)
-
-  // Year in Review data derived from state
-  const currentYear = new Date().getFullYear()
-  const yearInReviewData = useMemo(() => {
-    const thisYear = currentYear
-    const watchDates2 = Object.keys(watchHistory ?? {})
-    const watchedThisYear = watchDates2.filter(d => d.startsWith(String(thisYear)))
-    const titlesWatchedThisYear = watchedThisYear.reduce((s, d) => s + (watchHistory[d]?.length ?? 0), 0)
-    const biggestBinge = watchDates2.reduce((best, d) => {
-      const cnt = watchHistory[d]?.length ?? 0
-      return cnt > best.count ? { date: d, count: cnt } : best
-    }, { date: null, count: 0 })
-    const eraCounts = {}
-    for (const id of watched) {
-      const era = ERA_FOR_ID[id]
-      if (era) eraCounts[era] = (eraCounts[era] ?? 0) + 1
-    }
-    const favoriteEra = Object.entries(eraCounts).sort((a, b) => b[1] - a[1])[0]
-    return {
-      watchedCount: titlesWatchedThisYear,
-      runtimeHours: Math.floor(
-        listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
-      ),
-      biggestBingeDate: biggestBinge.date,
-      biggestBingeCount: biggestBinge.count,
-      favoriteEra: favoriteEra ? favoriteEra[0] : null,
-      favoriteEraCount: favoriteEra ? favoriteEra[1] : 0,
-      bestStreak: triviaState.bestStreak ?? 0,
-      triviaCorrect: triviaState.totalCorrect ?? 0,
-      triviaTotal: triviaState.totalAnswered ?? 0,
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [watched, watchHistory, triviaState])
 
   return (
     <div className="min-h-screen" style={{ background: currentTheme.bg }}>
