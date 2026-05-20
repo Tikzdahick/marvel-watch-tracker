@@ -945,6 +945,14 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onboarded, profile])
 
+  // ── Stats (must be declared before any useEffect that references them) ──
+  const total      = listTitles.length
+  const remaining  = total - listWatchedCount
+  const pct        = total ? Math.round((listWatchedCount / total) * 100) : 0
+  const totalHours = Math.floor(
+    listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
+  )
+
   // ── Milestone celebration (25 / 50 / 75 / 100 %) ──
   useEffect(() => {
     if (isInitialMount.current) return
@@ -1100,14 +1108,6 @@ export default function App() {
       setTimeout(() => setShowTierPrompt(id), 300)
     }
   }, [runAchievementCheck, watched, lockPins, unlockedTiers, soundsEnabled])
-
-  // ── Stats ──
-  const total      = listTitles.length
-  const remaining  = total - listWatchedCount
-  const pct        = total ? Math.round((listWatchedCount / total) * 100) : 0
-  const totalHours = Math.floor(
-    listTitles.filter(t => watched.has(t.id)).reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60
-  )
 
   // ── Pace display ──
   const paceInfo = useMemo(() => {
