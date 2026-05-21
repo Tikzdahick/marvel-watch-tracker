@@ -57,10 +57,16 @@ export default function ProfilePage({
   onOpenPersonality,
   onOpenYearInReview,
   onOpenBannerPicker,
+  onDeleteAccount,  // async (email) => void — clear all data and sign out
+  userEmail,        // string | undefined — pre-fill email confirmation
 }) {
   const [editing,         setEditing]         = useState(false)
   const [confirmSignOut,  setConfirmSignOut]   = useState(false)
   const [signingOut,      setSigningOut]       = useState(false)
+  const [showDeleteModal, setShowDeleteModal]  = useState(false)
+  const [deleteEmail,     setDeleteEmail]      = useState('')
+  const [deleting,        setDeleting]         = useState(false)
+  const [deleteError,     setDeleteError]      = useState(null)
 
   // Edit state — initialised from current values
   const [editName,   setEditName]   = useState(profile.name)
@@ -120,6 +126,18 @@ export default function ProfilePage({
     } catch {}
     setSigningOut(false)
     setConfirmSignOut(false)
+  }
+
+  async function handleDeleteAccount() {
+    if (!deleteEmail.trim()) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      await onDeleteAccount?.(deleteEmail.trim())
+    } catch (err) {
+      setDeleteError(err?.message ?? 'Failed to delete account. Please try again.')
+      setDeleting(false)
+    }
   }
 
   const displayAvatar = editPhoto ?? editAvatar
@@ -584,8 +602,77 @@ export default function ProfilePage({
               ⬡ Sign Out
             </button>
           )}
+
+          {/* Delete Account */}
+          {SUPABASE_ENABLED && onDeleteAccount && (
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="w-full py-2.5 rounded-xl text-[#444] text-[10px] font-semibold tracking-widest hover:text-[#E81C2E]/60 transition-colors uppercase"
+            >
+              Delete Account
+            </button>
+          )}
         </div>
       </div>
+
+      {/* ── Delete Account confirmation modal ── */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 z-[75] flex items-center justify-center p-6"
+          style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)' }}
+          onClick={() => !deleting && setShowDeleteModal(false)}
+        >
+          <div
+            className="w-full max-w-xs bg-[#0f0f0f] border border-[#E81C2E]/30 rounded-2xl p-6"
+            style={{ animation: 'completionPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="text-3xl mb-3 text-center">⚠️</div>
+            <h3 className="font-bebas text-xl tracking-widest text-[#E81C2E] mb-1 text-center">DELETE ACCOUNT</h3>
+            <p className="text-[#888] text-xs mb-4 leading-relaxed text-center">
+              This will permanently delete{' '}
+              <span className="text-white font-semibold">all your data</span> — posts,
+              comments, progress, friends and achievements.{' '}
+              <span className="text-[#E81C2E] font-semibold">This cannot be undone.</span>
+            </p>
+
+            <div className="mb-1">
+              <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1.5">
+                Type your email to confirm
+              </div>
+              <input
+                type="email"
+                value={deleteEmail}
+                onChange={e => { setDeleteEmail(e.target.value); setDeleteError(null) }}
+                placeholder={userEmail ?? 'your@email.com'}
+                disabled={deleting}
+                className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#E81C2E]/50 transition-colors disabled:opacity-40"
+              />
+            </div>
+
+            {deleteError && (
+              <p className="text-[11px] text-[#E81C2E] mb-3 mt-1">{deleteError}</p>
+            )}
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteEmail(''); setDeleteError(null) }}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-xl text-[#555] text-sm border border-[#222] hover:text-white transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || !deleteEmail.trim()}
+                className="flex-1 py-3 rounded-xl font-bebas text-lg tracking-widest bg-[#E81C2E] text-white hover:shadow-[0_0_12px_rgba(232,28,46,0.4)] transition-all disabled:opacity-40"
+              >
+                {deleting ? '…' : 'DELETE'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Sign Out confirmation modal ── */}
       {confirmSignOut && (

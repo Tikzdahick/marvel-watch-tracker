@@ -1,4 +1,4 @@
-// v1.0.1 — single-bundle build (manualChunks fix)
+// v1.0.3 — watch date picker, delete account, characters tab, fresh start
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import Onboarding from './Onboarding.jsx'
 import Achievements from './Achievements.jsx'
@@ -30,7 +30,7 @@ import TriviaLeaderboard from './TriviaLeaderboard.jsx'
 import TriviaDuelModal from './TriviaDuelModal.jsx'
 import { getRank, calcPointsEarned, getWeekStart } from './data/triviaRanks.js'
 import { upsertTriviaScore } from './lib/supabaseHelpers.js'
-import { useAuth, SUPABASE_ENABLED } from './hooks/useAuth.js'
+import { useAuth, SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
 import XPProgressBar from './XPProgressBar.jsx'
 import LevelUpModal from './LevelUpModal.jsx'
 import DailyMissionsWidget from './DailyMissionsWidget.jsx'
@@ -55,7 +55,9 @@ import {
   LOCK_TIERS, LOCK_TIER_ORDER, getLocksForTitle, getPrimaryLock, isTitleLocked,
   SK_LOCK_PINS,
 } from './data/locks.js'
-import { fetchFriendships } from './lib/supabaseHelpers.js'
+import { fetchFriendships, deleteAllUserData } from './lib/supabaseHelpers.js'
+import WatchDatePickerModal from './WatchDatePickerModal.jsx'
+import CharactersPage       from './CharactersPage.jsx'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
 const ERA_COLORS = {
@@ -100,6 +102,7 @@ const SK_NOTES        = 'mvt-notes'
 const SK_GOAL         = 'mvt-goal'
 const SK_REMINDER     = 'mvt-reminder'
 const SK_PLANNER      = 'mvt-planner'
+const SK_WATCH_DATES  = 'mvt-watch-dates'   // { [titleId]: 'YYYY-MM-DD' }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const DOOMSDAY      = new Date('2026-12-18T00:00:00')
@@ -728,8 +731,10 @@ export default function App() {
   const [config,    setConfig]    = useState(() => loadJSON(SK_CONFIG, { listSize: 'infinity', pace: 'casual' }))
 
   // ── Watched ──
+  // New users start with an empty list. Jonathan's existing data is already
+  // saved in localStorage so his progress is unaffected.
   const [watched, setWatched] = useState(() =>
-    new Set(loadJSON(SK_WATCHED, [...DEFAULT_WATCHED]))
+    new Set(loadJSON(SK_WATCHED, []))
   )
 
   // ── Watch history ──
@@ -762,6 +767,14 @@ export default function App() {
   // ── Watch Planner ──
   // { [titleId]: dateStr 'YYYY-MM-DD' }
   const [planner, setPlanner] = useState(() => loadJSON(SK_PLANNER, {}))
+
+  // ── Watch dates (per-title date picker) ──
+  // { [titleId]: 'YYYY-MM-DD' }
+  const [watchDates,          setWatchDates]          = useState(() => loadJSON(SK_WATCH_DATES, {}))
+  // When non-null, shows the date picker before completing the toggle
+  const [pendingWatchToggle,  setPendingWatchToggle]   = useState(null)  // { id, titleName }
+  // When non-null, Characters tab auto-focuses on this charKey
+  const [characterFocus,      setCharacterFocus]       = useState(null)
 
   // ── Friends (for Community feed sorting) ──
   const [friendIds, setFriendIds] = useState([])
@@ -893,7 +906,8 @@ export default function App() {
   useEffect(() => { saveJSON(SK_GOAL,     goal) },     [goal])
   useEffect(() => { saveJSON(SK_REMINDER, reminder) }, [reminder])
   useEffect(() => { saveJSON(SK_LOCK_PINS, lockPins) }, [lockPins])
-  useEffect(() => { saveJSON(SK_PLANNER,   planner) },  [planner])
+  useEffect(() => { saveJSON(SK_PLANNER,     planner) },    [planner])
+  useEffect(() => { saveJSON(SK_WATCH_DATES, watchDates) }, [watchDates])
   useEffect(() => { saveJSON(SK_TIERS,        tiers) },        [tiers])
   useEffect(() => { saveJSON(SK_IN_PROGRESS,  inProgress) },   [inProgress])
   useEffect(() => { saveJSON(SK_REWATCHES,    rewatches) },    [rewatches])
@@ -1063,32 +1077,57 @@ export default function App() {
   }, [listWatchedCount, listTitles.length])
 
   // ── Toggle watched ──
+  // If marking as watched, open the date picker first; unwatching proceeds immediately.
   const toggle = useCallback((id) => {
     const title = TITLES.find(t => t.id === id)
     if (!title) return
     if (title.comingSoon) return
     if (isTitleLocked(id, lockPins, unlockedTiers)) return
 
-    const isMarkingWatched = !watched.has(id)
+    if (!watched.has(id)) {
+      // Marking watched → ask for date first
+      setPendingWatchToggle({ id, titleName: title.title })
+    } else {
+      // Unwatching → remove immediately, no date needed
+      setWatched(prevW => {
+        const nextW = new Set(prevW)
+        nextW.delete(id)
+        setWatchHistory(prevH => {
+          const nextH = { ...prevH }
+          for (const d of Object.keys(nextH)) {
+            if (Array.isArray(nextH[d])) nextH[d] = nextH[d].filter(i => i !== id)
+            else if (nextH[d] === id) delete nextH[d]
+          }
+          runAchievementCheck(nextW, nextH)
+          return nextH
+        })
+        return nextW
+      })
+      setWatchDates(prev => { const n = { ...prev }; delete n[id]; return n })
+    }
+  }, [runAchievementCheck, watched, lockPins, unlockedTiers])
+
+  // ── Complete the watched toggle after a date is chosen ──
+  const completeWatchToggle = useCallback((id, dateStr) => {
+    setPendingWatchToggle(null)
+    const dateKey = dateStr ?? todayStr()
 
     setWatched(prevW => {
       const wasWatched = prevW.has(id)
+      if (wasWatched) return prevW   // shouldn't happen, but guard
       const nextW = new Set(prevW)
-      wasWatched ? nextW.delete(id) : nextW.add(id)
+      nextW.add(id)
 
       setWatchHistory(prevH => {
-        const today = todayStr()
         const nextH = { ...prevH }
-        if (!wasWatched) {
-          nextH[today] = [...new Set([...(nextH[today] ?? []), id])]
-          if (id === 21 && nextW.size === 1) {
-            setAchievements(prev => {
-              if (prev['secret-iron-man']?.unlocked) return prev
-              const next = { ...prev, 'secret-iron-man': { unlocked: true, unlockedAt: new Date().toISOString() } }
-              setToastQueue(q => [...q, 'secret-iron-man'])
-              return next
-            })
-          }
+        nextH[dateKey] = [...new Set([...(nextH[dateKey] ?? []), id])]
+        if (id === 21 && nextW.size === 1) {
+          setAchievements(prev => {
+            if (prev['secret-iron-man']?.unlocked) return prev
+            const next = { ...prev, 'secret-iron-man': { unlocked: true, unlockedAt: new Date().toISOString() } }
+            setToastQueue(q => [...q, 'secret-iron-man'])
+            return next
+          })
         }
         runAchievementCheck(nextW, nextH)
         return nextH
@@ -1097,19 +1136,35 @@ export default function App() {
       return nextW
     })
 
-    if (isMarkingWatched) {
-      // Play watch sound
-      if (soundsEnabled) playWatchSound()
-      // Earn XP
-      earnXP(XP_EVENTS?.WATCH ?? 50)
-      // Clear any in-progress status
-      setInProgress(prev => { const n = { ...prev }; delete n[id]; return n })
-      // Show tier prompt (skipping rating modal — rating is inside TitleDetailModal)
-      setTimeout(() => setShowTierPrompt(id), 300)
-    }
-  }, [runAchievementCheck, watched, lockPins, unlockedTiers, soundsEnabled])
+    setWatchDates(prev => ({ ...prev, [id]: dateKey }))
 
-  // ── Pace display ──
+    if (soundsEnabled) playWatchSound()
+    earnXP(XP_EVENTS?.WATCH ?? 50)
+    setInProgress(prev => { const n = { ...prev }; delete n[id]; return n })
+    setTimeout(() => setShowTierPrompt(id), 300)
+  }, [runAchievementCheck, soundsEnabled])
+
+  // ── Update watch date for an already-watched title ──
+  function handleUpdateWatchDate(titleId, newDateStr) {
+    if (!newDateStr) return
+    setWatchDates(prev => ({ ...prev, [titleId]: newDateStr }))
+    // Update watchHistory: move the id from its old date bucket to the new one
+    setWatchHistory(prevH => {
+      const nextH = { ...prevH }
+      // Remove from all existing date buckets
+      for (const d of Object.keys(nextH)) {
+        if (Array.isArray(nextH[d])) {
+          nextH[d] = nextH[d].filter(i => i !== titleId)
+          if (!nextH[d].length) delete nextH[d]
+        }
+      }
+      // Add to new date bucket
+      nextH[newDateStr] = [...new Set([...(nextH[newDateStr] ?? []), titleId])]
+      return nextH
+    })
+  }
+
+  // ── Pace display ──  // ── Pace display ──
   const paceInfo = useMemo(() => {
     const target = PACE_TARGETS[config.pace]
     if (!target) {
@@ -1474,6 +1529,24 @@ export default function App() {
     })
   }
 
+  // ── Delete account ──
+  async function handleDeleteAccount(email) {
+    if (!user) return { error: 'not-logged-in' }
+    const result = await deleteAllUserData(user.id)
+    if (result?.error) return result
+    // Clear all local storage keys
+    const keysToDelete = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i)
+      if (k?.startsWith('mvt-') || k === 'supabase.auth.token') keysToDelete.push(k)
+    }
+    keysToDelete.forEach(k => localStorage.removeItem(k))
+    // Sign out and reload
+    try { await signOut() } catch {}
+    window.location.reload()
+    return { error: null }
+  }
+
   // ── Gates ──
   console.log('[MVT] reached gates — authLoading:', authLoading, 'profile:', !!profile, 'onboarded:', onboarded)
 
@@ -1742,6 +1815,9 @@ export default function App() {
           onSaveNote={handleSaveNote}
           onRewatch={handleRewatch}
           onTagFriend={handleTagFriend}
+          watchDate={watchDates[detailTitle?.id]}
+          onEditWatchDate={watched.has(detailTitle?.id) ? (newDate) => handleUpdateWatchDate(detailTitle.id, newDate) : undefined}
+          onOpenCharacter={charKey => { setDetailModalId(null); setActiveTab('characters'); setTimeout(() => setCharacterFocus(charKey), 80) }}
           onClose={() => setDetailModalId(null)}
           onUnlockRequest={(tierKey) => { setDetailModalId(null); handleUnlockRequest(tierKey) }}
           onOpenDetail={tid => { setDetailModalId(null); setTimeout(() => setDetailModalId(tid), 80) }}
@@ -1772,6 +1848,8 @@ export default function App() {
           onDisableLock={handleLockDisable}
           onChangeLockPin={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
           onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
+          onDeleteAccount={handleDeleteAccount}
+          userEmail={user?.email}
           onShowFriends={() => { setShowProfile(false); setShowFriends(true) }}
           userId={user?.id}
           triviaState={triviaState}
@@ -1804,6 +1882,15 @@ export default function App() {
           currentRating={ratings[ratingModalId]}
           onRate={stars => handleRate(ratingModalId, stars)}
           onDismiss={() => setRatingModalId(null)}
+        />
+      )}
+
+      {/* ── WATCH DATE PICKER MODAL ── */}
+      {pendingWatchToggle && (
+        <WatchDatePickerModal
+          titleName={pendingWatchToggle.titleName}
+          onConfirm={dateStr => completeWatchToggle(pendingWatchToggle.id, dateStr)}
+          onCancel={() => setPendingWatchToggle(null)}
         />
       )}
 
@@ -2125,6 +2212,18 @@ export default function App() {
         <CommunityFeed user={user} friendIds={friendIds}/>
       )}
 
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {/* CHARACTERS TAB                                                          */}
+      {/* ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'characters' && (
+        <CharactersPage
+          watchedIds={watched}
+          onOpenTitle={tid => { setDetailModalId(tid); setActiveTab('tracker') }}
+          initialFocus={characterFocus}
+          onClearFocus={() => setCharacterFocus(null)}
+        />
+      )}
+
       {/* ── Bottom nav ── */}
       <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#111111', borderTop: '1px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto flex">
@@ -2166,6 +2265,14 @@ export default function App() {
               icon: (
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
+                </svg>
+              ),
+            },
+            {
+              id: 'characters', label: 'HEROES', badge: null,
+              icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>
                 </svg>
               ),
             },

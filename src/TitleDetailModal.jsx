@@ -103,6 +103,7 @@ export default function TitleDetailModal({
   spoilerFree = false,
   friends = [],
   taggedFriends = [],
+  watchDate,          // 'YYYY-MM-DD' | undefined — when the user watched this title
   onToggle,
   onSetInProgress,
   onRate,
@@ -112,6 +113,8 @@ export default function TitleDetailModal({
   onClose,
   onUnlockRequest,
   onOpenDetail,
+  onEditWatchDate,    // () => void — open the date picker to edit the watch date
+  onOpenCharacter,    // (charName) => void — navigate to character page
 }) {
   const meta        = getTitleMeta(title.id)
   const primaryLock = getPrimaryLock(title.id)
@@ -235,6 +238,33 @@ export default function TitleDetailModal({
           {/* Title */}
           <h1 className="text-white font-bold text-2xl leading-tight mb-4">{title.title}</h1>
 
+          {/* Watch date */}
+          {isWatched && (
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 bg-[#E81C2E]/8 border border-[#E81C2E]/20 rounded-xl px-3 py-2 flex-1">
+                <svg className="w-3.5 h-3.5 text-[#E81C2E] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/>
+                </svg>
+                <span className="text-[11px] text-[#E81C2E]/80 uppercase tracking-widest font-semibold">
+                  Watched:
+                </span>
+                <span className="text-[12px] text-white font-medium">
+                  {watchDate
+                    ? new Date(watchDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : 'Date not recorded'}
+                </span>
+              </div>
+              {onEditWatchDate && (
+                <button
+                  onClick={onEditWatchDate}
+                  className="px-3 py-2 rounded-xl text-[11px] text-[#555] border border-[#1e1e1e] hover:text-white hover:border-[#333] transition-colors flex-shrink-0"
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Meta pills */}
           <div className="flex flex-wrap gap-2 mb-5">
             <MetaPill icon={serviceIcon} label={meta.service}/>
@@ -260,17 +290,33 @@ export default function TitleDetailModal({
           {/* ── Characters ── */}
           {titleChars.length > 0 && (
             <div className="mb-6">
-              <SectionLabel>Characters</SectionLabel>
+              <SectionLabel>
+                Characters
+                {onOpenCharacter && (
+                  <span className="ml-1 text-[#444] normal-case font-normal text-[9px]">· tap to view profile</span>
+                )}
+              </SectionLabel>
               <SpoilerVeil revealed={factsShown} onReveal={() => setFactsShown(true)}>
                 <div className="flex flex-wrap gap-1.5">
                   {titleChars.map(char => (
-                    <span
-                      key={char}
-                      className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
-                      style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #252525' }}
-                    >
-                      {char}
-                    </span>
+                    onOpenCharacter ? (
+                      <button
+                        key={char}
+                        onClick={() => { onClose(); onOpenCharacter(char) }}
+                        className="text-[11px] px-2.5 py-1 rounded-lg font-medium transition-colors hover:border-[#E81C2E]/40 hover:text-white active:scale-95"
+                        style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #252525' }}
+                      >
+                        {char}
+                      </button>
+                    ) : (
+                      <span
+                        key={char}
+                        className="text-[11px] px-2.5 py-1 rounded-lg font-medium"
+                        style={{ background: '#1a1a1a', color: '#aaa', border: '1px solid #252525' }}
+                      >
+                        {char}
+                      </span>
+                    )
                   ))}
                 </div>
               </SpoilerVeil>

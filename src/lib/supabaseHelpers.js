@@ -545,3 +545,33 @@ export async function submitChallengeScore(challengeId, score, isChallenger) {
     : { challenged_score: score, status: 'completed' }
   return s.from('trivia_challenges').update(update).eq('id', challengeId)
 }
+
+// ── Account deletion ──────────────────────────────────────────────────────────
+
+/**
+ * Delete all data for a user from every Supabase table.
+ * Does NOT delete the auth.users record (requires admin API).
+ * After this, call sb.auth.signOut() to clear the session.
+ */
+export async function deleteAllUserData(userId) {
+  const s = sb()
+  if (!s || !userId) return { error: 'no-client' }
+
+  // Delete in dependency order: reactions → posts → social → profile
+  try {
+    await s.from('post_comments').delete().eq('user_id', userId)
+    await s.from('post_likes').delete().eq('user_id', userId)
+    await s.from('post_reports').delete().eq('user_id', userId)
+    await s.from('posts').delete().eq('user_id', userId)
+    await s.from('friendships').delete().or(
+      `requester_id.eq.${userId},addressee_id.eq.${userId}`
+    )
+    await s.from('trivia_challenges').delete().or(
+      `challenger_id.eq.${userId},challenged_id.eq.${userId}`
+    )
+    await s.from('user_profiles').delete().eq('id', userId)
+    return { error: null }
+  } catch (err) {
+    return { error: err?.message ?? 'delete-failed' }
+  }
+}
