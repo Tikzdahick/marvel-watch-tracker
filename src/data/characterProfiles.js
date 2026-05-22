@@ -134,7 +134,7 @@ export const CHARACTER_PROFILES = [
   // ── HAWKEYE ───────────────────────────────────────────────────────────────────
   {
     id: 'hawkeye',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/309-hawkeye.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/9/99/Hawkeye_%28Clinton_Barton%29.png',
     name: 'Clint Barton',
     alias: 'Hawkeye',
     charKey: 'Hawkeye',
@@ -172,7 +172,7 @@ export const CHARACTER_PROFILES = [
   // ── DOCTOR STRANGE ────────────────────────────────────────────────────────────
   {
     id: 'doctor-strange',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/228-doctor-strange.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/4f/Doctor_Strange_Vol_4_2_Ross_Variant_Textless.jpg',
     name: 'Stephen Strange',
     alias: 'Doctor Strange',
     charKey: 'Stephen Strange',
@@ -191,7 +191,7 @@ export const CHARACTER_PROFILES = [
   // ── BLACK PANTHER ─────────────────────────────────────────────────────────────
   {
     id: 'black-panther',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/105-black-panther.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/f/f7/Black_Panther_%28T%27Challa%29.png',
     name: "T'Challa",
     alias: 'Black Panther',
     charKey: 'Black Panther',
@@ -609,7 +609,7 @@ export const CHARACTER_PROFILES = [
   // ── GORR THE GOD BUTCHER ─────────────────────────────────────────────────────
   {
     id: 'gorr',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/298-gorr.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/7/79/Gorr_the_god_butcher.jpg',
     name: 'Gorr',
     alias: 'Gorr the God Butcher',
     charKey: 'Gorr the God Butcher',
@@ -799,7 +799,7 @@ export const CHARACTER_PROFILES = [
   // ── SHURI ─────────────────────────────────────────────────────────────────────
   {
     id: 'shuri',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/607-shuri.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/2d/Shuri_as_Griot%2C_Black_Panther_%282018%29_Variant_Cover.jpg',
     name: 'Shuri',
     alias: 'Shuri / Black Panther',
     charKey: 'Shuri',
@@ -818,7 +818,7 @@ export const CHARACTER_PROFILES = [
   // ── NICK FURY ─────────────────────────────────────────────────────────────────
   {
     id: 'nick-fury',
-    img: 'https://upload.wikimedia.org/wikipedia/en/7/71/Nick_Fury_I.png',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/2/29/SamuelLJackson.jpg',
     name: 'Nick Fury',
     alias: 'Nick Fury',
     charKey: 'Nick Fury',
@@ -875,7 +875,7 @@ export const CHARACTER_PROFILES = [
   // ── KATE BISHOP ───────────────────────────────────────────────────────────────
   {
     id: 'kate-bishop',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/720-kate-bishop.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/1f/Hawkeye_%28Kate_Bishop%29.png',
     name: 'Kate Bishop',
     alias: 'Hawkeye',
     charKey: 'Kate Bishop',
@@ -894,7 +894,7 @@ export const CHARACTER_PROFILES = [
   // ── YELENA BELOVA ─────────────────────────────────────────────────────────────
   {
     id: 'yelena-belova',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/721-yelena-belova.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/e2/Comic_Still_of_Yelena_Belova_as_the_Super-Adaptoid.png',
     name: 'Yelena Belova',
     alias: 'Black Widow',
     charKey: 'Yelena Belova',
@@ -913,7 +913,7 @@ export const CHARACTER_PROFILES = [
   // ── MOON KNIGHT ───────────────────────────────────────────────────────────────
   {
     id: 'moon-knight',
-    img: 'https://upload.wikimedia.org/wikipedia/en/4/4a/Moon_Knight_%28Marc_Spector%29.png',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/0/0d/Oscar_Isaac_at_82nd_Venice_International_Film_Festival-1_%28cropped%29.jpg',
     name: 'Marc Spector / Steven Grant',
     alias: 'Moon Knight / Mr. Knight',
     charKey: 'Marc Spector',
@@ -932,7 +932,7 @@ export const CHARACTER_PROFILES = [
   // ── MS. MARVEL ────────────────────────────────────────────────────────────────
   {
     id: 'ms-marvel',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/723-ms-marvel.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/8/8a/Generations_Ms._Marvel_%26_Ms._Marvel_Vol_1_1.png',
     name: 'Kamala Khan',
     alias: 'Ms. Marvel',
     charKey: 'Kamala Khan',
@@ -970,7 +970,7 @@ export const CHARACTER_PROFILES = [
   // ── OKOYE ─────────────────────────────────────────────────────────────────────
   {
     id: 'okoye',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/719-okoye.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/4/40/Danai_Gurira_%2848411663897%29_%28cropped2%29.jpg',
     name: 'Okoye',
     alias: 'Okoye',
     charKey: 'Okoye',
