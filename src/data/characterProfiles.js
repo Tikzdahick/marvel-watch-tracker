@@ -210,7 +210,7 @@ export const CHARACTER_PROFILES = [
   // ── CAPTAIN MARVEL ────────────────────────────────────────────────────────────
   {
     id: 'captain-marvel',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/155-captain-marvel.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/02/Carol_Danvers_-_%28evolution%29.jpg',
     name: 'Carol Danvers',
     alias: 'Captain Marvel',
     charKey: 'Captain Marvel',
@@ -229,7 +229,7 @@ export const CHARACTER_PROFILES = [
   // ── SCARLET WITCH ─────────────────────────────────────────────────────────────
   {
     id: 'scarlet-witch',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/578-scarlet-witch.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/ec/Scarlet_Witch_Various_incarnations_2021.jpg',
     name: 'Wanda Maximoff',
     alias: 'Scarlet Witch',
     charKey: 'Scarlet Witch',
@@ -248,7 +248,7 @@ export const CHARACTER_PROFILES = [
   // ── VISION ────────────────────────────────────────────────────────────────────
   {
     id: 'vision',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/700-vision.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/3/3d/Vision_%28Marvel_Comics%29.png',
     name: 'Vision',
     alias: 'Vision',
     charKey: 'Vision',
@@ -267,7 +267,7 @@ export const CHARACTER_PROFILES = [
   // ── SAM WILSON / CAPTAIN AMERICA ─────────────────────────────────────────────
   {
     id: 'sam-wilson',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/570-sam-wilson.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/2e/TheFalcon.jpg',
     name: 'Sam Wilson',
     alias: 'Captain America',
     charKey: 'Sam Wilson',
@@ -286,7 +286,7 @@ export const CHARACTER_PROFILES = [
   // ── WINTER SOLDIER ────────────────────────────────────────────────────────────
   {
     id: 'winter-soldier',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/714-winter-soldier.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/8/8d/BuckyBarnes.jpeg',
     name: 'Bucky Barnes',
     alias: 'Winter Soldier / White Wolf',
     charKey: 'Bucky Barnes',
@@ -305,7 +305,7 @@ export const CHARACTER_PROFILES = [
   // ── ANT-MAN ───────────────────────────────────────────────────────────────────
   {
     id: 'ant-man',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/44-ant-man.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/3/38/Ant-Man_%28Scott_Lang%29.jpg',
     name: 'Scott Lang',
     alias: 'Ant-Man',
     charKey: 'Scott Lang',
@@ -324,7 +324,7 @@ export const CHARACTER_PROFILES = [
   // ── LOKI ──────────────────────────────────────────────────────────────────────
   {
     id: 'loki',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/412-loki.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/ee/Various_incarnations_of_Loki_%282014%29.webp',
     name: 'Loki Laufeyson',
     alias: 'Loki, God of Mischief',
     charKey: 'Loki',
@@ -343,7 +343,7 @@ export const CHARACTER_PROFILES = [
   // ── STAR-LORD ─────────────────────────────────────────────────────────────────
   {
     id: 'star-lord',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/625-star-lord.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/15/ST1.PNG',
     name: 'Peter Quill',
     alias: 'Star-Lord',
     charKey: 'Peter Quill',
@@ -362,7 +362,7 @@ export const CHARACTER_PROFILES = [
   // ── GAMORA ────────────────────────────────────────────────────────────────────
   {
     id: 'gamora',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/270-gamora.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/08/Gamora-cover.jpg',
     name: 'Gamora',
     alias: 'Gamora',
     charKey: 'Gamora',
@@ -381,7 +381,7 @@ export const CHARACTER_PROFILES = [
   // ── ROCKET RACCOON ────────────────────────────────────────────────────────────
   {
     id: 'rocket',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/559-rocket-raccoon.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/1b/Rocketraccoon.png',
     name: 'Subject 89P13',
     alias: 'Rocket Raccoon',
     charKey: 'Rocket',
@@ -419,7 +419,7 @@ export const CHARACTER_PROFILES = [
   // ── DRAX ──────────────────────────────────────────────────────────────────────
   {
     id: 'drax',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/231-drax.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/02/Drax-cover.jpg',
     name: 'Drax the Destroyer',
     alias: 'Drax',
     charKey: 'Drax',
@@ -438,7 +438,7 @@ export const CHARACTER_PROFILES = [
   // ── NEBULA ────────────────────────────────────────────────────────────────────
   {
     id: 'nebula',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/473-nebula.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/a/a9/Nebula_%28Marvel_Comics_character_-_circa_2020%29.jpg',
     name: 'Nebula',
     alias: 'Nebula',
     charKey: 'Nebula',
@@ -457,7 +457,7 @@ export const CHARACTER_PROFILES = [
   // ── THANOS ────────────────────────────────────────────────────────────────────
   {
     id: 'thanos',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/655-thanos.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/b/b7/Thanos_%28Infobox_image%29.png',
     name: 'Thanos',
     alias: 'The Mad Titan',
     charKey: 'Thanos',
@@ -476,7 +476,7 @@ export const CHARACTER_PROFILES = [
   // ── ULTRON ────────────────────────────────────────────────────────────────────
   {
     id: 'ultron',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/688-ultron.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/7/74/Ultron_%28Marvel_Comics_character%29.png',
     name: 'Ultron',
     alias: 'Ultron',
     charKey: 'Ultron',
@@ -495,7 +495,7 @@ export const CHARACTER_PROFILES = [
   // ── RED SKULL ─────────────────────────────────────────────────────────────────
   {
     id: 'red-skull',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/549-red-skull.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/4b/Red_Skull_%28Johann_Shmidt%29.png',
     name: 'Johann Schmidt',
     alias: 'Red Skull',
     charKey: 'Red Skull',
@@ -514,7 +514,7 @@ export const CHARACTER_PROFILES = [
   // ── HELA ──────────────────────────────────────────────────────────────────────
   {
     id: 'hela',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/316-hela.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/d/db/Hela.png',
     name: 'Hela Odinsdottir',
     alias: 'Hela, Goddess of Death',
     charKey: 'Hela',
@@ -533,7 +533,7 @@ export const CHARACTER_PROFILES = [
   // ── KILLMONGER ────────────────────────────────────────────────────────────────
   {
     id: 'killmonger',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/364-killmonger.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/e6/Black_Panther_Vol4_37.jpg',
     name: 'N\'Jadaka / Erik Stevens',
     alias: 'Erik Killmonger',
     charKey: 'Erik Killmonger',
@@ -552,7 +552,7 @@ export const CHARACTER_PROFILES = [
   // ── VULTURE ───────────────────────────────────────────────────────────────────
   {
     id: 'vulture',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/699-vulture.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/46/Vulture_%28Adrian_Toomes%29.png',
     name: 'Adrian Toomes',
     alias: 'The Vulture',
     charKey: 'Vulture',
@@ -571,7 +571,7 @@ export const CHARACTER_PROFILES = [
   // ── MYSTERIO ──────────────────────────────────────────────────────────────────
   {
     id: 'mysterio',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/463-mysterio.jpg',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/479-mysterio.jpg',
     name: 'Quentin Beck',
     alias: 'Mysterio',
     charKey: 'Mysterio',
@@ -590,7 +590,7 @@ export const CHARACTER_PROFILES = [
   // ── KANG ─────────────────────────────────────────────────────────────────────
   {
     id: 'kang',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/369-kang.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/06/Kang_the_Conqueror.png',
     name: 'Nathaniel Richards',
     alias: 'Kang the Conqueror / He Who Remains',
     charKey: 'Kang',
@@ -628,7 +628,7 @@ export const CHARACTER_PROFILES = [
   // ── DORMAMMU ──────────────────────────────────────────────────────────────────
   {
     id: 'dormammu',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/229-dormammu.jpg',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/232-dormammu.jpg',
     name: 'Dormammu',
     alias: 'Dormammu',
     charKey: 'Dormammu',
@@ -647,7 +647,7 @@ export const CHARACTER_PROFILES = [
   // ── NAMOR ─────────────────────────────────────────────────────────────────────
   {
     id: 'namor',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/474-namor.jpg',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/481-namor.jpg',
     name: 'Namor / Kukulkan',
     alias: 'Namor',
     charKey: 'Namor',
@@ -666,7 +666,7 @@ export const CHARACTER_PROFILES = [
   // ── KINGPIN ───────────────────────────────────────────────────────────────────
   {
     id: 'kingpin',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/383-kingpin.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/54/Kingpin_%28Wilson_Grant_Fisk%29.png',
     name: 'Wilson Fisk',
     alias: 'Kingpin',
     charKey: 'Kingpin',
@@ -685,7 +685,7 @@ export const CHARACTER_PROFILES = [
   // ── BARON ZEMO ────────────────────────────────────────────────────────────────
   {
     id: 'baron-zemo',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/79-baron-zemo.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/4c/Baron-zemo.jpg',
     name: 'Helmut Zemo',
     alias: 'Baron Zemo',
     charKey: 'Baron Zemo',
@@ -704,7 +704,7 @@ export const CHARACTER_PROFILES = [
   // ── GREEN GOBLIN ──────────────────────────────────────────────────────────────
   {
     id: 'green-goblin',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/302-green-goblin.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/3/35/Green_Goblin_Comic_Art_by_Miguel_Mercado.png',
     name: 'Norman Osborn',
     alias: 'Green Goblin',
     charKey: 'Green Goblin',
@@ -742,7 +742,7 @@ export const CHARACTER_PROFILES = [
   // ── WOLVERINE ─────────────────────────────────────────────────────────────────
   {
     id: 'wolverine',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/717-wolverine.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/d/d3/Wolverine_%28circa_2024%29.jpg',
     name: 'James "Logan" Howlett',
     alias: 'Wolverine / Logan',
     charKey: 'Wolverine',
@@ -761,7 +761,7 @@ export const CHARACTER_PROFILES = [
   // ── PROFESSOR X ───────────────────────────────────────────────────────────────
   {
     id: 'professor-x',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/543-professor-x.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/a/a8/Professor_X.png',
     name: 'Charles Xavier',
     alias: 'Professor X',
     charKey: 'Charles Xavier',
@@ -780,7 +780,7 @@ export const CHARACTER_PROFILES = [
   // ── DAREDEVIL ─────────────────────────────────────────────────────────────────
   {
     id: 'daredevil',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/206-daredevil.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/14/Daredevil_65.jpg',
     name: 'Matt Murdock',
     alias: 'Daredevil',
     charKey: 'Matt Murdock',
@@ -818,7 +818,7 @@ export const CHARACTER_PROFILES = [
   // ── NICK FURY ─────────────────────────────────────────────────────────────────
   {
     id: 'nick-fury',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/479-nick-fury.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/7/71/Nick_Fury_I.png',
     name: 'Nick Fury',
     alias: 'Nick Fury',
     charKey: 'Nick Fury',
@@ -837,7 +837,7 @@ export const CHARACTER_PROFILES = [
   // ── VALKYRIE ──────────────────────────────────────────────────────────────────
   {
     id: 'valkyrie',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/693-valkyrie.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/e2/Valkyrie_by_Mike_Deodato.png',
     name: 'Brunnhilde',
     alias: 'Valkyrie',
     charKey: 'Valkyrie',
@@ -856,7 +856,7 @@ export const CHARACTER_PROFILES = [
   // ── BLADE ─────────────────────────────────────────────────────────────────────
   {
     id: 'blade',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/108-blade.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/3/37/Blade_%28Marvel_Comics%29.png',
     name: 'Eric Brooks',
     alias: 'Blade, the Daywalker',
     charKey: 'Blade',
@@ -913,7 +913,7 @@ export const CHARACTER_PROFILES = [
   // ── MOON KNIGHT ───────────────────────────────────────────────────────────────
   {
     id: 'moon-knight',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/722-moon-knight.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/4a/Moon_Knight_%28Marc_Spector%29.png',
     name: 'Marc Spector / Steven Grant',
     alias: 'Moon Knight / Mr. Knight',
     charKey: 'Marc Spector',
@@ -951,7 +951,7 @@ export const CHARACTER_PROFILES = [
   // ── WONG ──────────────────────────────────────────────────────────────────────
   {
     id: 'wong',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/718-wong.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/01/Marvel%27s_Wong_%282022%29.webp',
     name: 'Wong',
     alias: 'Sorcerer Supreme',
     charKey: 'Wong',
