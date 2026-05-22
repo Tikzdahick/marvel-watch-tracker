@@ -19,35 +19,82 @@ function saveFavs(s) {
   try { localStorage.setItem(FAVORITES_KEY, JSON.stringify([...s])) } catch {}
 }
 
+// ── CharacterPhoto — photo with emoji fallback ────────────────────────────────
+function CharacterPhoto({ profile, size = 'md', className = '' }) {
+  const [imgError, setImgError] = useState(false)
+  const sizeMap = { sm: 'w-11 h-11', md: 'w-14 h-14', lg: 'w-20 h-20' }
+  const textMap  = { sm: 'text-xl', md: 'text-2xl', lg: 'text-4xl' }
+  const sizeClass = sizeMap[size] ?? sizeMap.md
+  const textClass = textMap[size] ?? textMap.md
+
+  if (profile.img && !imgError) {
+    return (
+      <div
+        className={`${sizeClass} rounded-2xl overflow-hidden flex-shrink-0 ${className}`}
+        style={{ border: `1.5px solid ${profile.color}40` }}
+      >
+        <img
+          src={profile.img}
+          alt={profile.alias}
+          onError={() => setImgError(true)}
+          className="w-full h-full object-cover object-top"
+        />
+      </div>
+    )
+  }
+
+  // Fallback: colored symbol tile
+  return (
+    <div
+      className={`${sizeClass} rounded-2xl flex items-center justify-center flex-shrink-0 ${textClass} ${className}`}
+      style={{ background: profile.bg, border: `1.5px solid ${profile.color}40` }}
+    >
+      <span style={{ filter: 'drop-shadow(0 0 6px ' + profile.color + '80)' }}>
+        {profile.symbol}
+      </span>
+    </div>
+  )
+}
+
 // ── CharacterCard ──────────────────────────────────────────────────────────────
 function CharacterCard({ profile, isFav, onToggleFav, onClick }) {
   const titleIds = CHARACTER_TITLES[profile.charKey] ?? []
   return (
     <button
       onClick={onClick}
-      className="relative bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl p-3 flex flex-col items-center gap-2 text-center active:scale-95 transition-all hover:border-[#333]"
-      style={{ boxShadow: `0 0 0 0 ${profile.color}00` }}
+      className="relative bg-[#0f0f0f] border border-[#1e1e1e] rounded-2xl overflow-hidden flex flex-col items-center text-center active:scale-95 transition-all hover:border-[#333]"
+      style={{ boxShadow: `0 2px 12px ${profile.color}10` }}
     >
-      {/* Fav button */}
-      <button
-        onClick={e => { e.stopPropagation(); onToggleFav(profile.id) }}
-        className="absolute top-2 right-2 text-[14px] opacity-60 hover:opacity-100 transition-opacity"
-      >
-        {isFav ? '★' : '☆'}
-      </button>
-
-      {/* Symbol avatar */}
+      {/* Photo / symbol header */}
       <div
-        className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0"
-        style={{ background: profile.bg, border: `1.5px solid ${profile.color}40` }}
+        className="w-full h-28 overflow-hidden relative"
+        style={{ background: profile.bg }}
       >
-        <span style={{ filter: 'drop-shadow(0 0 6px ' + profile.color + '80)' }}>
-          {profile.symbol}
-        </span>
+        {profile.img
+          ? <CharacterPhoto profile={profile} size="lg" className="w-full h-full rounded-none" />
+          : (
+            <div className="w-full h-full flex items-center justify-center text-4xl"
+              style={{ background: profile.bg }}>
+              <span style={{ filter: 'drop-shadow(0 0 8px ' + profile.color + '80)' }}>
+                {profile.symbol}
+              </span>
+            </div>
+          )
+        }
+        {/* Color accent bar */}
+        <div className="absolute bottom-0 inset-x-0 h-0.5" style={{ background: profile.color + '80' }}/>
+        {/* Fav button */}
+        <button
+          onClick={e => { e.stopPropagation(); onToggleFav(profile.id) }}
+          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-[12px] transition-all hover:scale-110"
+          style={{ color: isFav ? '#F5C518' : '#666' }}
+        >
+          {isFav ? '★' : '☆'}
+        </button>
       </div>
 
-      {/* Name / alias */}
-      <div className="w-full min-w-0">
+      {/* Name / alias / count */}
+      <div className="w-full min-w-0 px-2.5 py-2">
         <div
           className="text-[11px] font-bebas tracking-widest leading-tight truncate"
           style={{ color: profile.color }}
@@ -57,14 +104,12 @@ function CharacterCard({ profile, isFav, onToggleFav, onClick }) {
         <div className="text-[9px] text-[#555] leading-tight truncate mt-0.5">
           {profile.name}
         </div>
+        {titleIds.length > 0 && (
+          <div className="text-[9px] text-[#3a3a3a] font-semibold mt-1">
+            {titleIds.length} title{titleIds.length !== 1 ? 's' : ''}
+          </div>
+        )}
       </div>
-
-      {/* Titles count */}
-      {titleIds.length > 0 && (
-        <div className="text-[9px] text-[#444] font-semibold">
-          {titleIds.length} title{titleIds.length !== 1 ? 's' : ''}
-        </div>
-      )}
     </button>
   )
 }
@@ -126,15 +171,8 @@ function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenT
 
           {/* Hero section */}
           <div className="flex items-start gap-4 mb-6">
-            <div
-              className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl flex-shrink-0"
-              style={{
-                background: profile.bg,
-                border: `2px solid ${profile.color}50`,
-                boxShadow: `0 0 20px ${profile.color}25`,
-              }}
-            >
-              {profile.symbol}
+            <div style={{ boxShadow: `0 0 20px ${profile.color}25` }}>
+              <CharacterPhoto profile={profile} size="lg" />
             </div>
             <div className="flex-1 min-w-0">
               <div

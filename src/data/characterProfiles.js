@@ -39,6 +39,7 @@ export const CHARACTER_PROFILES = [
   // ── IRON MAN ─────────────────────────────────────────────────────────────────
   {
     id: 'iron-man',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/346-iron-man.jpg',
     name: 'Tony Stark',
     alias: 'Iron Man',
     charKey: 'Tony Stark',
@@ -57,6 +58,7 @@ export const CHARACTER_PROFILES = [
   // ── CAPTAIN AMERICA ───────────────────────────────────────────────────────────
   {
     id: 'captain-america',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/149-captain-america.jpg',
     name: 'Steve Rogers',
     alias: 'Captain America',
     charKey: 'Steve Rogers',
@@ -75,6 +77,7 @@ export const CHARACTER_PROFILES = [
   // ── THOR ──────────────────────────────────────────────────────────────────────
   {
     id: 'thor',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/659-thor.jpg',
     name: 'Thor Odinson',
     alias: 'Thor',
     charKey: 'Thor',
@@ -93,6 +96,7 @@ export const CHARACTER_PROFILES = [
   // ── HULK ──────────────────────────────────────────────────────────────────────
   {
     id: 'hulk',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/332-hulk.jpg',
     name: 'Bruce Banner',
     alias: 'The Hulk',
     charKey: 'Bruce Banner',
@@ -111,6 +115,7 @@ export const CHARACTER_PROFILES = [
   // ── BLACK WIDOW ───────────────────────────────────────────────────────────────
   {
     id: 'black-widow',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/107-black-widow.jpg',
     name: 'Natasha Romanoff',
     alias: 'Black Widow',
     charKey: 'Black Widow',
@@ -129,6 +134,7 @@ export const CHARACTER_PROFILES = [
   // ── HAWKEYE ───────────────────────────────────────────────────────────────────
   {
     id: 'hawkeye',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/309-hawkeye.jpg',
     name: 'Clint Barton',
     alias: 'Hawkeye',
     charKey: 'Hawkeye',
@@ -147,6 +153,7 @@ export const CHARACTER_PROFILES = [
   // ── SPIDER-MAN ────────────────────────────────────────────────────────────────
   {
     id: 'spider-man',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/620-spider-man.jpg',
     name: 'Peter Parker',
     alias: 'Spider-Man',
     charKey: 'Peter Parker',
@@ -165,6 +172,7 @@ export const CHARACTER_PROFILES = [
   // ── DOCTOR STRANGE ────────────────────────────────────────────────────────────
   {
     id: 'doctor-strange',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/228-doctor-strange.jpg',
     name: 'Stephen Strange',
     alias: 'Doctor Strange',
     charKey: 'Stephen Strange',
@@ -183,6 +191,7 @@ export const CHARACTER_PROFILES = [
   // ── BLACK PANTHER ─────────────────────────────────────────────────────────────
   {
     id: 'black-panther',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/105-black-panther.jpg',
     name: "T'Challa",
     alias: 'Black Panther',
     charKey: 'Black Panther',
@@ -201,6 +210,7 @@ export const CHARACTER_PROFILES = [
   // ── CAPTAIN MARVEL ────────────────────────────────────────────────────────────
   {
     id: 'captain-marvel',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/155-captain-marvel.jpg',
     name: 'Carol Danvers',
     alias: 'Captain Marvel',
     charKey: 'Captain Marvel',
@@ -219,6 +229,7 @@ export const CHARACTER_PROFILES = [
   // ── SCARLET WITCH ─────────────────────────────────────────────────────────────
   {
     id: 'scarlet-witch',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/578-scarlet-witch.jpg',
     name: 'Wanda Maximoff',
     alias: 'Scarlet Witch',
     charKey: 'Scarlet Witch',
@@ -237,6 +248,7 @@ export const CHARACTER_PROFILES = [
   // ── VISION ────────────────────────────────────────────────────────────────────
   {
     id: 'vision',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/700-vision.jpg',
     name: 'Vision',
     alias: 'Vision',
     charKey: 'Vision',
@@ -255,6 +267,7 @@ export const CHARACTER_PROFILES = [
   // ── SAM WILSON / CAPTAIN AMERICA ─────────────────────────────────────────────
   {
     id: 'sam-wilson',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/570-sam-wilson.jpg',
     name: 'Sam Wilson',
     alias: 'Captain America',
     charKey: 'Sam Wilson',
@@ -273,6 +286,7 @@ export const CHARACTER_PROFILES = [
   // ── WINTER SOLDIER ────────────────────────────────────────────────────────────
   {
     id: 'winter-soldier',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/714-winter-soldier.jpg',
     name: 'Bucky Barnes',
     alias: 'Winter Soldier / White Wolf',
     charKey: 'Bucky Barnes',
@@ -291,6 +305,7 @@ export const CHARACTER_PROFILES = [
   // ── ANT-MAN ───────────────────────────────────────────────────────────────────
   {
     id: 'ant-man',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/44-ant-man.jpg',
     name: 'Scott Lang',
     alias: 'Ant-Man',
     charKey: 'Scott Lang',
@@ -309,6 +324,7 @@ export const CHARACTER_PROFILES = [
   // ── LOKI ──────────────────────────────────────────────────────────────────────
   {
     id: 'loki',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/412-loki.jpg',
     name: 'Loki Laufeyson',
     alias: 'Loki, God of Mischief',
     charKey: 'Loki',
@@ -327,6 +343,7 @@ export const CHARACTER_PROFILES = [
   // ── STAR-LORD ─────────────────────────────────────────────────────────────────
   {
     id: 'star-lord',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/625-star-lord.jpg',
     name: 'Peter Quill',
     alias: 'Star-Lord',
     charKey: 'Peter Quill',
@@ -345,6 +362,7 @@ export const CHARACTER_PROFILES = [
   // ── GAMORA ────────────────────────────────────────────────────────────────────
   {
     id: 'gamora',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/270-gamora.jpg',
     name: 'Gamora',
     alias: 'Gamora',
     charKey: 'Gamora',
@@ -435,6 +453,7 @@ export const CHARACTER_PROFILES = [
   // ── THANOS ────────────────────────────────────────────────────────────────────
   {
     id: 'thanos',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/655-thanos.jpg',
     name: 'Thanos',
     alias: 'The Mad Titan',
     charKey: 'Thanos',
@@ -777,6 +796,7 @@ export const CHARACTER_PROFILES = [
   // ── NICK FURY ─────────────────────────────────────────────────────────────────
   {
     id: 'nick-fury',
+    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/479-nick-fury.jpg',
     name: 'Nick Fury',
     alias: 'Nick Fury',
     charKey: 'Nick Fury',
