@@ -140,6 +140,7 @@ export default function ProfilePage({
   async function handleChangePw() {
     setPwError(null)
     setPwSuccess(false)
+    if (!SUPABASE_ENABLED) { setPwError('Password changes require a cloud account. Enable Supabase to use this feature.'); return }
     if (newPw !== confirmPw) { setPwError('New passwords do not match'); return }
     if (newPw.length < 6)    { setPwError('Password must be at least 6 characters'); return }
     setPwLoading(true)
@@ -621,8 +622,7 @@ export default function ProfilePage({
           )}
 
           {/* ── Change Password ── */}
-          {SUPABASE_ENABLED && (
-            <div className="rounded-2xl border border-[#1e1e1e] bg-[#0f0f0f] overflow-hidden">
+          <div className="rounded-2xl border border-[#1e1e1e] bg-[#0f0f0f] overflow-hidden">
               {/* Toggle row */}
               <button
                 onClick={() => {
@@ -685,27 +685,22 @@ export default function ProfilePage({
                 </div>
               )}
             </div>
-          )}
 
           {/* ── Sign Out ── */}
-          {SUPABASE_ENABLED && (
-            <button
-              onClick={() => setConfirmSignOut(true)}
-              className="w-full py-3 rounded-xl border border-[#E81C2E]/20 text-[#E81C2E]/70 text-xs font-semibold tracking-widest hover:border-[#E81C2E]/40 hover:text-[#E81C2E] transition-all uppercase"
-            >
-              ⬡ Sign Out
-            </button>
-          )}
+          <button
+            onClick={() => setConfirmSignOut(true)}
+            className="w-full py-3 rounded-xl border border-[#E81C2E]/20 text-[#E81C2E]/70 text-xs font-semibold tracking-widest hover:border-[#E81C2E]/40 hover:text-[#E81C2E] transition-all uppercase"
+          >
+            ⬡ Sign Out
+          </button>
 
           {/* ── Delete Account ── */}
-          {SUPABASE_ENABLED && onDeleteAccount && (
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="w-full py-2.5 rounded-xl text-[#444] text-[10px] font-semibold tracking-widest hover:text-[#E81C2E]/60 transition-colors uppercase"
-            >
-              Delete Account
-            </button>
-          )}
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="w-full py-2.5 rounded-xl text-[#444] text-[10px] font-semibold tracking-widest hover:text-[#E81C2E]/60 transition-colors uppercase"
+          >
+            Delete Account
+          </button>
         </div>
       </div>
 
@@ -783,7 +778,9 @@ export default function ProfilePage({
             <div className="text-3xl mb-3">👋</div>
             <h3 className="font-bebas text-xl tracking-widest text-white mb-2">SIGN OUT?</h3>
             <p className="text-[#555] text-sm mb-6 leading-relaxed">
-              Your progress is saved in the cloud. You can sign back in any time.
+              {SUPABASE_ENABLED
+                ? 'Your progress is saved in the cloud. You can sign back in any time.'
+                : 'This will close your session and return to the start screen.'}
             </p>
             <div className="flex gap-3">
               <button

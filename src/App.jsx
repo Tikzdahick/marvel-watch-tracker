@@ -1531,9 +1531,10 @@ export default function App() {
 
   // ── Delete account ──
   async function handleDeleteAccount(email) {
-    if (!user) return { error: 'not-logged-in' }
-    const result = await deleteAllUserData(user.id)
-    if (result?.error) return result
+    if (SUPABASE_ENABLED && user) {
+      const result = await deleteAllUserData(user.id)
+      if (result?.error) return result
+    }
     // Clear all local storage keys
     const keysToDelete = []
     for (let i = 0; i < localStorage.length; i++) {
