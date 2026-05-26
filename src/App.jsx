@@ -1581,10 +1581,13 @@ export default function App() {
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete}/>
 
   if (activeFranchise === 'dc') {
-    return <DCTracker onBack={() => {
-      setActiveFranchise('marvel')
-      saveJSON('mvt-franchise', 'marvel')
-    }}/>
+    return <DCTracker
+      dcListSize={config.dcListSize ?? 'hero'}
+      onBack={() => {
+        setActiveFranchise('marvel')
+        saveJSON('mvt-franchise', 'marvel')
+      }}
+    />
   }
 
   const unlockedAchievements = Object.values(achievements).filter(a => a.unlocked).length
