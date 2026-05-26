@@ -517,6 +517,130 @@ export const TITLE_META = {
     desc: "Marvel's first family — Reed Richards, Sue Storm, Johnny Storm and Ben Grimm — make their MCU debut in a retro 1960s setting.",
   },
 
+  // ── Sony Spider-Verse ──────────────────────────────────────────────────────
+  86: {
+    service: 'Starz',
+    imdb: '7.3',
+    runtime: '121 min',
+    desc: "After a radioactive spider bite gives high-schooler Peter Parker incredible powers, he becomes the masked hero Spider-Man and faces the Green Goblin threatening New York City. Sam Raimi's blockbuster launched the modern superhero film era.",
+  },
+  87: {
+    service: 'Starz',
+    imdb: '7.5',
+    runtime: '127 min',
+    desc: 'Peter Parker struggles to juggle college life and his identity as Spider-Man while facing the brilliant but unstable Doctor Octopus — a scientist whose mechanical tentacles have fused to his spine after a catastrophic lab accident.',
+  },
+  88: {
+    service: 'Starz',
+    imdb: '6.2',
+    runtime: '139 min',
+    desc: 'Peter Parker battles a powerful alien symbiote that brings out his darkest impulses, while simultaneously confronting the Sandman, a revived Venom, and a growing rift with Mary Jane Watson.',
+  },
+  89: {
+    service: 'Netflix',
+    imdb: '5.2',
+    runtime: '104 min',
+    desc: 'Biochemist Michael Morbius attempts to cure himself of a rare blood disease and accidentally transforms into a living vampire — a creature with superhuman abilities and an overpowering hunger for blood.',
+  },
+  90: {
+    service: 'Netflix',
+    imdb: '5.2',
+    runtime: '127 min',
+    desc: 'Russian aristocrat Sergei Kravinoff gains superhuman abilities after a fateful encounter with a lion and sets out to prove himself the greatest hunter alive by pursuing the most dangerous prey imaginable.',
+  },
+  91: {
+    service: 'Netflix',
+    imdb: '6.0',
+    runtime: '109 min',
+    desc: 'Eddie Brock and Venom go on the run from authorities and a terrifying alien predator called Knull, who wants to reclaim the symbiote — leading to a climactic final chapter for the unlikely duo.',
+  },
+  92: {
+    service: 'Netflix',
+    imdb: '4.1',
+    runtime: '116 min',
+    desc: 'New York paramedic Cassandra Webb discovers clairvoyant abilities tied to the spider world and must protect three young women from a villain who has seen them as future Spider-Women in his visions.',
+  },
+  93: {
+    service: 'Netflix',
+    imdb: '8.4',
+    runtime: '117 min',
+    desc: "Brooklyn teen Miles Morales is bitten by a radioactive spider and becomes Spider-Man, then discovers a multiverse of other Spider-People who must stop a reality-destroying collider. A revolutionary animated film praised for its groundbreaking art style and heartfelt story.",
+  },
+  94: {
+    service: 'Netflix',
+    imdb: '8.6',
+    runtime: '140 min',
+    desc: "Miles Morales ventures through the multiverse and clashes with Spider-Man 2099 over a fundamental law of every Spider-Man's destiny. A breathtaking visual achievement and one of the best-reviewed superhero films ever made.",
+  },
+  95: {
+    service: 'Theaters',
+    imdb: 'TBA',
+    runtime: 'TBA',
+    desc: "The epic conclusion to Miles Morales's multiverse trilogy, picking up directly where Across the Spider-Verse ended as Miles races to save his family, his universe, and ultimately himself.",
+  },
+
+  // ── Classic / Legacy Marvel ────────────────────────────────────────────────
+  96: {
+    service: 'Peacock',
+    imdb: '4.6',
+    runtime: '110 min',
+    desc: 'Howard, a wise-cracking anthropomorphic duck from a parallel Earth, is accidentally transported to Cleveland where he teams up with a struggling rock musician to prevent a dark overlord from taking over the planet.',
+  },
+  97: {
+    service: 'Tubi',
+    imdb: '5.7',
+    runtime: '89 min',
+    desc: "Former cop Frank Castle, having watched his family be murdered by the mob, lives in the sewers of New York City and wages a brutal one-man war as the Punisher against the organised crime bosses responsible.",
+  },
+  98: {
+    service: 'Tubi',
+    imdb: '3.2',
+    runtime: '97 min',
+    desc: 'Steve Rogers is transformed into super soldier Captain America and fights the Red Skull during World War II, only to wake up decades later in the modern world to stop the same villain from completing his plan for global domination.',
+  },
+  99: {
+    service: 'Disney+',
+    imdb: '5.3',
+    runtime: '103 min',
+    desc: "Blind lawyer Matt Murdock uses his superhuman senses to fight crime as the masked vigilante Daredevil. He falls for deadly assassin Elektra while hunting the criminal Kingpin — and must choose between justice and vengeance.",
+  },
+  100: {
+    service: 'Peacock',
+    imdb: '5.7',
+    runtime: '138 min',
+    desc: "Ang Lee's psychological take on the Hulk legend sees Bruce Banner's repressed trauma and rage manifest as a virtually indestructible green giant, while his obsessive father pursues a dangerous experiment of his own.",
+  },
+  101: {
+    service: 'Disney+',
+    imdb: '4.8',
+    runtime: '97 min',
+    desc: 'Resurrected assassin Elektra Natchios is hired to kill a man and his daughter, only to have a change of heart — choosing to protect them from a ruthless organisation called The Hand that once claimed her own life.',
+  },
+  102: {
+    service: 'Disney+',
+    imdb: '5.7',
+    runtime: '106 min',
+    desc: "Four astronauts gain superpowers after exposure to a cosmic storm in space and must unite as the Fantastic Four to stop their former colleague Victor Von Doom — now the armoured Doctor Doom — from seizing world domination.",
+  },
+  103: {
+    service: 'Disney+',
+    imdb: '5.6',
+    runtime: '92 min',
+    desc: "The Fantastic Four encounter the Silver Surfer, a powerful cosmic herald preparing Earth for consumption by the planet-devourer Galactus, while Doctor Doom schemes to steal the Surfer's limitless power board for himself.",
+  },
+  104: {
+    service: 'Starz',
+    imdb: '5.2',
+    runtime: '114 min',
+    desc: "Stunt motorcyclist Johnny Blaze sold his soul to Mephisto and now transforms into the Ghost Rider — a flaming, chain-wielding skeleton. He must use his hellish curse to destroy Mephisto's son before the demon unleashes hell on Earth.",
+  },
+  105: {
+    service: 'Starz',
+    imdb: '4.3',
+    runtime: '95 min',
+    desc: "Johnny Blaze hides in Eastern Europe when a mysterious sect asks him to protect a boy targeted by the devil himself. He must battle Mephisto and wrestle back control from the Ghost Rider before the curse consumes him entirely.",
+  },
+
   // ── Coming soon ────────────────────────────────────────────────────────────
   82: {
     service: 'Disney+',

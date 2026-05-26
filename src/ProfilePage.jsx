@@ -11,10 +11,10 @@ import { PERSONALITY_MAP } from './data/marvelPersonality.js'
 import { BANNER_MAP } from './ProfileBannerPicker.jsx'
 
 const LIST_OPTS = [
-  { id: 'rookie',   label: 'Rookie',   count: '58' },
-  { id: 'hero',     label: 'Hero',     count: '74' },
-  { id: 'avenger',  label: 'Avenger',  count: '81' },
-  { id: 'infinity', label: 'Infinity', count: '85' },
+  { id: 'rookie',   label: 'Rookie',   count: '77' },
+  { id: 'hero',     label: 'Hero',     count: '93' },
+  { id: 'avenger',  label: 'Avenger',  count: '100' },
+  { id: 'infinity', label: 'Infinity', count: '107' },
 ]
 const PACE_OPTS = [
   { id: 'casual',     label: 'Casual' },

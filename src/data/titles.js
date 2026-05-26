@@ -97,6 +97,32 @@ export const TITLES = [
   { id: 83, title: 'Spider-Man: Brand New Day',                     type: 'animated', tier: 4, comingSoon: true },
   { id: 84, title: 'Avengers: Doomsday',                            type: 'movie',    tier: 1, comingSoon: true },
   { id: 85, title: 'Avengers: Secret Wars',                         type: 'movie',    tier: 1, comingSoon: true },
+
+  // ── Sony Spider-Verse ──
+  { id: 86,  title: 'Spider-Man (2002)',                             type: 'movie',    tier: 1 },
+  { id: 87,  title: 'Spider-Man 2',                                  type: 'movie',    tier: 1 },
+  { id: 88,  title: 'Spider-Man 3',                                  type: 'movie',    tier: 1 },
+  { id: 106, title: 'The Amazing Spider-Man (2012)',                 type: 'movie',    tier: 1 },
+  { id: 107, title: 'The Amazing Spider-Man 2 (2014)',               type: 'movie',    tier: 1 },
+  { id: 89,  title: 'Morbius',                                       type: 'movie',    tier: 1 },
+  { id: 90,  title: 'Kraven the Hunter',                             type: 'movie',    tier: 1 },
+  { id: 91,  title: 'Venom: The Last Dance',                         type: 'movie',    tier: 1 },
+  { id: 92,  title: 'Madame Web',                                    type: 'movie',    tier: 1 },
+  { id: 93,  title: 'Spider-Man: Into the Spider-Verse',             type: 'animated', tier: 4 },
+  { id: 94,  title: 'Spider-Man: Across the Spider-Verse',           type: 'animated', tier: 4 },
+  { id: 95,  title: 'Spider-Man: Beyond the Spider-Verse',           type: 'animated', tier: 4, comingSoon: true },
+
+  // ── Classic / Legacy Marvel ──
+  { id: 96,  title: 'Howard the Duck',                               type: 'movie',    tier: 1 },
+  { id: 97,  title: 'The Punisher (1989)',                           type: 'movie',    tier: 1 },
+  { id: 98,  title: 'Captain America (1990)',                        type: 'movie',    tier: 1 },
+  { id: 99,  title: 'Daredevil (2003)',                              type: 'movie',    tier: 1 },
+  { id: 100, title: 'Hulk (2003)',                                   type: 'movie',    tier: 1 },
+  { id: 101, title: 'Elektra',                                       type: 'movie',    tier: 1 },
+  { id: 102, title: 'Fantastic Four (2005)',                         type: 'movie',    tier: 1 },
+  { id: 103, title: 'Fantastic Four: Rise of the Silver Surfer',     type: 'movie',    tier: 1 },
+  { id: 104, title: 'Ghost Rider',                                   type: 'movie',    tier: 1 },
+  { id: 105, title: 'Ghost Rider: Spirit of Vengeance',             type: 'movie',    tier: 1 },
 ]
 
 /** IDs watched by default based on user's history */
@@ -160,7 +186,9 @@ export const IDS_XMEN_ERA        = new Set([5,6,7,8,9,10,11,12,13,14,15,16])
 export const IDS_DEFENDERS_SAGA  = new Set([34,35,36,37,38,39])
 export const IDS_INFINITY_SAGA   = new Set([17,20,21,22,23,24,25,26,27,28,30,31,32,33,40,41,42,43,44,45,46,47,48])
 export const IDS_MULTIVERSE_SAGA = new Set([49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85])
-export const IDS_SPIDERMAN       = new Set([43,56,57])
+export const IDS_SPIDERMAN       = new Set([43,56,57,86,87,88,93,94,95])
+export const IDS_SONY_SPIDERVERSE = new Set([73,74,86,87,88,89,90,91,92,93,94,95,106,107])
+export const IDS_CLASSIC_MARVEL   = new Set([96,97,98,99,100,101,102,103,104,105])
 export const IDS_BLACK_PANTHER   = new Set([42,63])
 export const IDS_THOR            = new Set([24,27,45,62])
 export const IDS_CAP_AMERICA     = new Set([17,28,40,77])

@@ -5,6 +5,15 @@
 
 export const ERAS = [
   {
+    key:    'classic',
+    label:  'Classic Marvel',
+    sub:    'Pre-MCU Legacy Films (1986–2012)',
+    emoji:  '📽️',
+    color:  'text-amber-400',
+    bg:     'bg-amber-950/40',
+    border: 'border-amber-500/20',
+  },
+  {
     key:    'blade',
     label:  'Blade Era',
     sub:    'Pre-MCU (1998–2004)',
@@ -21,6 +30,15 @@ export const ERAS = [
     color:  'text-purple-400',
     bg:     'bg-purple-950/50',
     border: 'border-purple-500/20',
+  },
+  {
+    key:    'sony',
+    label:  'Sony Spider-Verse',
+    sub:    'Spider-Man & Symbiotes (2002–present)',
+    emoji:  '🕷️',
+    color:  'text-red-400',
+    bg:     'bg-red-950/40',
+    border: 'border-red-500/20',
   },
   {
     key:    'early',
@@ -110,9 +128,20 @@ export const ERA_FOR_ID = {
   69: 'disney', 70: 'disney', 71: 'disney',
 
   // ── Recent Releases (2024–2025) ────────────────────────────
-  4: 'recent', 72: 'recent', 73: 'recent', 74: 'recent', 75: 'recent',
+  // (73 Venom, 74 VLTBC moved to 'sony' below)
+  4: 'recent', 72: 'recent', 75: 'recent',
   76: 'recent', 77: 'recent', 78: 'recent', 79: 'recent', 80: 'recent',
   81: 'recent',
+
+  // ── Sony Spider-Verse ───────────────────────────────────────
+  73: 'sony', 74: 'sony',
+  86: 'sony', 87: 'sony', 88: 'sony', 89: 'sony', 90: 'sony',
+  91: 'sony', 92: 'sony', 93: 'sony', 94: 'sony', 95: 'sony',
+  106: 'sony', 107: 'sony',
+
+  // ── Classic / Legacy Marvel ─────────────────────────────────
+  96: 'classic', 97: 'classic', 98: 'classic', 99: 'classic', 100: 'classic',
+  101: 'classic', 102: 'classic', 103: 'classic', 104: 'classic', 105: 'classic',
 
   // ── Coming Soon ────────────────────────────────────────────
   82: 'soon', 83: 'soon', 84: 'soon', 85: 'soon',
