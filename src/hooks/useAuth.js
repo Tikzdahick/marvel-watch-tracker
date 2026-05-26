@@ -87,6 +87,27 @@ export async function signUpWithEmail(email, password) {
   return sb.auth.signUp({ email, password })
 }
 
+/**
+ * Change the current user's password.
+ * Re-authenticates with the current password first to verify it,
+ * then updates to the new password via Supabase.
+ */
+export async function changePassword(currentPassword, newPassword) {
+  const sb = getSupabase()
+  if (!sb) throw new Error('Supabase not configured')
+  const { data: { user } } = await sb.auth.getUser()
+  if (!user?.email) throw new Error('Not authenticated')
+  // Verify current password by re-signing in
+  const { error: verifyError } = await sb.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  })
+  if (verifyError) throw new Error('Current password is incorrect')
+  // Apply the new password
+  const { error } = await sb.auth.updateUser({ password: newPassword })
+  if (error) throw error
+}
+
 /** Sign in with Google OAuth */
 export async function signInWithGoogle() {
   const sb = getSupabase()
