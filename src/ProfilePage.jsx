@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { calcStreak, calcLongestStreak } from './data/achievements.js'
 import { LOCK_TIERS, LOCK_TIER_ORDER } from './data/locks.js'
 import { SUPABASE_ENABLED, signOut, changePassword } from './hooks/useAuth.js'
@@ -705,9 +706,9 @@ export default function ProfilePage({
       </div>
 
       {/* ── Delete Account confirmation modal ── */}
-      {showDeleteModal && (
+      {showDeleteModal && createPortal(
         <div
-          className="fixed inset-0 z-[75] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-6"
           style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(10px)' }}
           onClick={() => !deleting && setShowDeleteModal(false)}
         >
@@ -760,13 +761,14 @@ export default function ProfilePage({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Sign Out confirmation modal ── */}
-      {confirmSignOut && (
+      {confirmSignOut && createPortal(
         <div
-          className="fixed inset-0 z-[70] flex items-center justify-center p-6"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-6"
           style={{ background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(8px)' }}
           onClick={() => !signingOut && setConfirmSignOut(false)}
         >
@@ -799,7 +801,8 @@ export default function ProfilePage({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
