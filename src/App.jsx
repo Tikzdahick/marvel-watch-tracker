@@ -58,6 +58,7 @@ import {
 import { fetchFriendships, deleteAllUserData } from './lib/supabaseHelpers.js'
 import WatchDatePickerModal from './WatchDatePickerModal.jsx'
 import CharactersPage       from './CharactersPage.jsx'
+import DCTracker            from './DCTracker.jsx'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
 const ERA_COLORS = {
@@ -789,6 +790,9 @@ export default function App() {
       setFriendIds(ids)
     })
   }, [user])
+
+  // ── Franchise selector ──
+  const [activeFranchise, setActiveFranchise] = useState(() => loadJSON('mvt-franchise', 'marvel'))
 
   // ── UI state ──
   const [activeTab,      setActiveTab]      = useState('home')
@@ -1576,6 +1580,13 @@ export default function App() {
   }
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete}/>
 
+  if (activeFranchise === 'dc') {
+    return <DCTracker onBack={() => {
+      setActiveFranchise('marvel')
+      saveJSON('mvt-franchise', 'marvel')
+    }}/>
+  }
+
   const unlockedAchievements = Object.values(achievements).filter(a => a.unlocked).length
 
   // ── Detail modal title ──
@@ -1921,6 +1932,10 @@ export default function App() {
           onNavigate={(tab) => {
             if (tab === 'profile') { setShowProfile(true) }
             else { setActiveTab(tab) }
+          }}
+          onSelectFranchise={(franchise) => {
+            setActiveFranchise(franchise)
+            saveJSON('mvt-franchise', franchise)
           }}
         />
       )}

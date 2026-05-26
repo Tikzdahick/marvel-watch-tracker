@@ -1,0 +1,32 @@
+export const DC_ERAS = [
+  {
+    key:    'classic-dc',
+    label:  'Classic DC',
+    sub:    'Donner · Burton · Nolan (1978–2012)',
+    emoji:  '🦇',
+    color:  'text-amber-400',
+    bg:     'bg-amber-950/30',
+    border: 'border-amber-500/20',
+    ids:    [1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009],
+  },
+  {
+    key:    'dceu',
+    label:  'DCEU',
+    sub:    'DC Extended Universe (2013–2023)',
+    emoji:  '⚡',
+    color:  'text-blue-400',
+    bg:     'bg-blue-950/30',
+    border: 'border-blue-500/20',
+    ids:    [1010, 1011, 1012, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025, 1026],
+  },
+  {
+    key:    'new-dcu',
+    label:  'New DCU',
+    sub:    'Gunn Era (2024–Present)',
+    emoji:  '🌟',
+    color:  'text-[#FFD700]',
+    bg:     'bg-yellow-950/20',
+    border: 'border-[#FFD700]/20',
+    ids:    [1027, 1028, 1029, 1030, 1031, 1032],
+  },
+]

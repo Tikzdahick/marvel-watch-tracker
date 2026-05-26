@@ -109,6 +109,7 @@ export default function HomePage({
   dailyFact, triviaState, parties, activeMood,
   onOpenMoodPicker, onOpenTrivia, onOpenWatchParty, onOpenTierList,
   xp = 0, weeklyState = {}, seasonState = {}, debateState = {}, onDebateVote,
+  onSelectFranchise,
 }) {
   const { watchedCount, total, remaining, pct, unlockedAchievements } = stats
 
@@ -219,6 +220,61 @@ export default function HomePage({
 
       {/* ── Body ── */}
       <div className="max-w-lg mx-auto px-5 w-full space-y-4 mt-5">
+
+        {/* ── Franchise Selector ── */}
+        {onSelectFranchise && (
+          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid #1a1a1a', background: '#0f0f0f' }}>
+            <div className="px-4 pt-3 pb-2">
+              <div className="text-[9px] text-[#444] uppercase tracking-widest font-semibold">Choose Your Universe</div>
+            </div>
+            <div className="grid grid-cols-2 gap-0">
+              {/* Marvel */}
+              <div className="flex flex-col items-center gap-2 px-4 py-4 border-r border-[#1a1a1a] rounded-bl-2xl"
+                style={{ background: 'rgba(232,28,46,0.06)' }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl"
+                  style={{ background: 'linear-gradient(135deg, #E81C2E 0%, #a0001a 100%)', color: 'white', boxShadow: '0 0 16px rgba(232,28,46,0.4)' }}
+                >
+                  M
+                </div>
+                <div className="text-center">
+                  <div className="font-bebas text-[15px] tracking-widest text-white">MARVEL</div>
+                  <div className="text-[9px] text-[#444]">107 titles</div>
+                </div>
+                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg"
+                  style={{ background: 'rgba(232,28,46,0.15)', color: '#E81C2E', border: '1px solid rgba(232,28,46,0.25)' }}
+                >
+                  ✓ ACTIVE
+                </div>
+              </div>
+              {/* DC */}
+              <button
+                onClick={() => onSelectFranchise('dc')}
+                className="flex flex-col items-center gap-2 px-4 py-4 transition-all active:scale-[0.97] rounded-br-2xl group"
+                style={{ background: 'rgba(255,215,0,0.03)' }}
+              >
+                <div className="w-10 h-10 flex items-center justify-center font-black text-base text-black flex-shrink-0 transition-all group-hover:scale-105"
+                  style={{
+                    background: 'linear-gradient(135deg, #FFD700 0%, #d4a017 100%)',
+                    clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+                    boxShadow: '0 0 16px rgba(255,215,0,0.3)',
+                  }}
+                >
+                  DC
+                </div>
+                <div className="text-center">
+                  <div className="font-bebas text-[15px] tracking-widest text-white">DC UNIVERSE</div>
+                  <div className="text-[9px] text-[#444]">32 titles</div>
+                </div>
+                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg transition-all group-hover:opacity-100 opacity-70"
+                  style={{ background: 'rgba(255,215,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }}
+                >
+                  SWITCH →
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* XP Level Bar */}
         <XPProgressBar xp={xp} compact={false}/>
