@@ -1,0 +1,175 @@
+/**
+ * DC achievements — unlocked based on watched Set of title IDs.
+ * All IDs are in the 1001–1032 DC range.
+ */
+
+const DCEU_IDS  = [1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026]
+const CLASSIC_IDS = [1001,1002,1003,1004,1005,1006,1007,1008,1009]
+
+export const DC_ACHIEVEMENTS = [
+  {
+    id: 'first_dc',
+    name: 'First Contact',
+    icon: '⚡',
+    desc: 'Watch your first DC title.',
+    category: 'milestone',
+    check: w => w.size >= 1,
+  },
+  {
+    id: 'man_of_steel',
+    name: 'Man of Steel',
+    icon: '🦸',
+    desc: 'Watch Man of Steel — the film that launched the DCEU.',
+    category: 'film',
+    check: w => w.has(1010),
+  },
+  {
+    id: 'dark_knight_trilogy',
+    name: 'The Dark Knight',
+    icon: '🦇',
+    desc: 'Complete Christopher Nolan\'s Dark Knight trilogy.',
+    category: 'collection',
+    check: w => [1007,1008,1009].every(id => w.has(id)),
+  },
+  {
+    id: 'trinity',
+    name: 'The Trinity',
+    icon: '⚔️',
+    desc: 'Watch Man of Steel, Batman v Superman, and Wonder Woman.',
+    category: 'collection',
+    check: w => [1010,1011,1013].every(id => w.has(id)),
+  },
+  {
+    id: 'justice_league',
+    name: 'Justice Is Served',
+    icon: '⚡',
+    desc: 'Watch Justice League (2017) — the team assembles.',
+    category: 'film',
+    check: w => w.has(1014),
+  },
+  {
+    id: 'snyder_cut',
+    name: 'The Snyder Cut',
+    icon: '🎬',
+    desc: "Watch Zack Snyder's Justice League — the director's vision, restored.",
+    category: 'film',
+    check: w => w.has(1019),
+  },
+  {
+    id: 'task_force_x',
+    name: 'Task Force X',
+    icon: '💀',
+    desc: 'Watch both Suicide Squad films.',
+    category: 'collection',
+    check: w => [1012,1020].every(id => w.has(id)),
+  },
+  {
+    id: 'amazonian',
+    name: 'Amazonian',
+    icon: '⚔️',
+    desc: 'Watch both Wonder Woman films.',
+    category: 'collection',
+    check: w => [1013,1018].every(id => w.has(id)),
+  },
+  {
+    id: 'seven_seas',
+    name: 'The Seven Seas',
+    icon: '🌊',
+    desc: 'Watch both Aquaman films.',
+    category: 'collection',
+    check: w => [1015,1026].every(id => w.has(id)),
+  },
+  {
+    id: 'shazam_both',
+    name: 'SHAZAM!',
+    icon: '⭐',
+    desc: 'Watch both Shazam! films.',
+    category: 'collection',
+    check: w => [1016,1023].every(id => w.has(id)),
+  },
+  {
+    id: 'black_adam',
+    name: 'Black Adam',
+    icon: '⚡',
+    desc: "Watch Black Adam — the hierarchy of power has changed.",
+    category: 'film',
+    check: w => w.has(1022),
+  },
+  {
+    id: 'fastest_alive',
+    name: 'Fastest Alive',
+    icon: '⚡',
+    desc: 'Watch The Flash — Worlds collide.',
+    category: 'film',
+    check: w => w.has(1024),
+  },
+  {
+    id: 'peace_and_love',
+    name: 'Peace & Love',
+    icon: '🕊️',
+    desc: 'Watch Peacemaker Season 1.',
+    category: 'film',
+    check: w => w.has(1021),
+  },
+  {
+    id: 'commandos',
+    name: 'Commandos',
+    icon: '💣',
+    desc: 'Watch Creature Commandos — the first chapter of the new DCU.',
+    category: 'film',
+    check: w => w.has(1027),
+  },
+  {
+    id: 'new_guard',
+    name: 'New Guard',
+    icon: '🌟',
+    desc: "Watch Superman (2025) — the new DCU begins.",
+    category: 'film',
+    check: w => w.has(1028),
+  },
+  {
+    id: 'classic_era',
+    name: 'Golden Age',
+    icon: '📽️',
+    desc: 'Complete all Classic DC titles.',
+    category: 'collection',
+    check: w => CLASSIC_IDS.every(id => w.has(id)),
+  },
+  {
+    id: 'gotham_finest',
+    name: "Gotham's Finest",
+    icon: '🦇',
+    desc: 'Watch all Batman films in the Classic DC era.',
+    category: 'collection',
+    check: w => [1003,1004,1005,1006,1007,1008,1009].every(id => w.has(id)),
+  },
+  {
+    id: 'dceu_pioneer',
+    name: 'DCEU Pioneer',
+    icon: '🌟',
+    desc: 'Watch 5 DCEU titles.',
+    category: 'milestone',
+    check: w => DCEU_IDS.filter(id => w.has(id)).length >= 5,
+  },
+  {
+    id: 'dceu_complete',
+    name: 'DCEU Complete',
+    icon: '🔱',
+    desc: 'Watch every DCEU title (2013–2023).',
+    category: 'collection',
+    check: w => DCEU_IDS.filter(id => id !== 1021).every(id => w.has(id)), // movies only
+  },
+  {
+    id: 'worlds_finest',
+    name: "World's Finest",
+    icon: '🏆',
+    desc: 'Watch all available DC titles. The ultimate fan.',
+    category: 'milestone',
+    check: w => {
+      const available = [1001,1002,1003,1004,1005,1006,1007,1008,1009,
+        1010,1011,1012,1013,1014,1015,1016,1017,1018,1019,1020,1021,1022,1023,1024,1025,1026,
+        1027,1028]
+      return available.every(id => w.has(id))
+    },
+  },
+]

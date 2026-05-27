@@ -1583,10 +1583,14 @@ export default function App() {
   if (activeFranchise === 'dc') {
     return <DCTracker
       dcListSize={config.dcListSize ?? 'hero'}
+      profile={profile}
+      user={user}
       onBack={() => {
         setActiveFranchise('marvel')
         saveJSON('mvt-franchise', 'marvel')
       }}
+      onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
+      onDeleteAccount={handleDeleteAccount}
     />
   }
 
