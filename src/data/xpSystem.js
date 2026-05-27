@@ -16,14 +16,15 @@ export const XP_EVENTS = {
   BADGE_EARNED:   20,   // unlock a badge
 }
 
-// Level definitions: key, label, minXP, maxXP, color, icon, gradient
+// SHIELD Rank definitions — Marvel-exclusive rank system
 export const LEVELS = [
-  { key: 'recruit',   label: 'Recruit',    minXP: 0,     maxXP: 499,   color: '#888',    icon: '🪖',  gradient: null },
-  { key: 'agent',     label: 'S.H.I.E.L.D. Agent', minXP: 500, maxXP: 1499, color: '#60a5fa', icon: '🛡️',  gradient: null },
-  { key: 'hero',      label: 'Hero',       minXP: 1500,  maxXP: 2999,  color: '#4ade80', icon: '🦸',  gradient: null },
-  { key: 'avenger',   label: 'Avenger',    minXP: 3000,  maxXP: 5999,  color: '#F5C518', icon: '⚡',  gradient: null },
-  { key: 'legend',    label: 'Legend',     minXP: 6000,  maxXP: 9999,  color: '#E81C2E', icon: '🌟',  gradient: 'linear-gradient(135deg,#E81C2E,#ff6b35)' },
-  { key: 'nexus',     label: 'Nexus Being',minXP: 10000, maxXP: Infinity, color: '#a78bfa', icon: '🌌', gradient: 'linear-gradient(135deg,#a78bfa,#60a5fa,#4ade80)' },
+  { key: 'recruit',   label: 'S.H.I.E.L.D. Recruit',   minXP: 0,     maxXP: 499,   color: '#888',    icon: '🪖',  gradient: null,                                              sub: 'Your mission has begun.' },
+  { key: 'agent',     label: 'S.H.I.E.L.D. Agent',     minXP: 500,   maxXP: 1499,  color: '#60a5fa', icon: '🛡️',  gradient: null,                                              sub: 'Cleared for field operations.' },
+  { key: 'senior',    label: 'Senior Agent',            minXP: 1500,  maxXP: 2999,  color: '#4ade80', icon: '🔵',  gradient: null,                                              sub: 'Trusted operative of S.H.I.E.L.D.' },
+  { key: 'commander', label: 'S.H.I.E.L.D. Commander', minXP: 3000,  maxXP: 5999,  color: '#F5C518', icon: '⭐',  gradient: 'linear-gradient(135deg,#F5C518,#d4a017)',         sub: 'Command-level clearance granted.' },
+  { key: 'director',  label: 'Director of S.H.I.E.L.D.',minXP: 6000, maxXP: 9999,  color: '#E81C2E', icon: '🎖️',  gradient: 'linear-gradient(135deg,#E81C2E,#a0001a)',         sub: 'The highest rank in the organisation.' },
+  { key: 'avenger',   label: 'Avenger',                 minXP: 10000, maxXP: 14999, color: '#a78bfa', icon: '⚡',  gradient: 'linear-gradient(135deg,#a78bfa,#E81C2E)',         sub: 'Earth\'s Mightiest Hero.' },
+  { key: 'iron_man',  label: 'Iron Man Level',          minXP: 15000, maxXP: Infinity, color: '#F5C518', icon: '🦾', gradient: 'linear-gradient(135deg,#F5C518,#E81C2E,#a78bfa)', sub: 'I am Iron Man.' },
 ]
 
 export function getLevel(xp) {

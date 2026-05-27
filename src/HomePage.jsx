@@ -18,6 +18,11 @@ import XPProgressBar from './XPProgressBar.jsx'
 import DailyMissionsWidget from './DailyMissionsWidget.jsx'
 import WeeklySeasonWidget from './WeeklySeasonWidget.jsx'
 import DebateWidget from './DebateWidget.jsx'
+import { MCU_PHASES, INFINITY_STONES } from './data/marvelExtras.js'
+
+const STONE_KEY = 'mvt-stones-seen'
+function loadStonesSeen() { try { return JSON.parse(localStorage.getItem(STONE_KEY) ?? '[]') } catch { return [] } }
+function saveStonesSeen(v) { try { localStorage.setItem(STONE_KEY, JSON.stringify(v)) } catch {} }
 
 const DOOMSDAY = new Date('2026-12-18T00:00:00')
 
@@ -110,8 +115,30 @@ export default function HomePage({
   onOpenMoodPicker, onOpenTrivia, onOpenWatchParty, onOpenTierList,
   xp = 0, weeklyState = {}, seasonState = {}, debateState = {}, onDebateVote,
   onSelectFranchise,
+  watched,         // Set of watched IDs — for phase progress + stone tracker
+  allTitles = [],  // full list of titles for phase lookup
 }) {
   const { watchedCount, total, remaining, pct, unlockedAchievements } = stats
+
+  // Infinity stone seen tracking (localStorage)
+  const [stonesSeen, setStonesSeen] = useState(loadStonesSeen)
+  function toggleStoneSeen(id) {
+    setStonesSeen(prev => {
+      const next = prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+      saveStonesSeen(next)
+      return next
+    })
+  }
+
+  // Phase progress
+  const phaseStats = useMemo(() => {
+    if (!watched) return []
+    return MCU_PHASES.map(phase => {
+      const phaseTitles = phase.ids.filter(id => allTitles.some(t => t.id === id))
+      const watchedHere = phaseTitles.filter(id => watched.has(id)).length
+      return { ...phase, total: phaseTitles.length, watchedHere }
+    }).filter(p => p.total > 0)
+  }, [watched, allTitles])
 
   const loginStreak  = useMemo(() => calcStreak(loginDates ?? []), [loginDates])
   const watchDates   = useMemo(() => Object.keys(watchHistory ?? {}), [watchHistory])
@@ -450,6 +477,103 @@ export default function HomePage({
           debateState={debateState}
           onVote={onDebateVote}
         />
+
+        {/* ── Phase Progress ── */}
+        {phaseStats.length > 0 && watched && (
+          <div className="rounded-2xl p-5" style={{ background: '#0f0f0f', border: '1px solid #1a1a1a' }}>
+            <div className="text-[9px] uppercase tracking-widest mb-4 font-semibold" style={{ color: '#444' }}>
+              ⚡ MCU Phase Progress
+            </div>
+            <div className="space-y-3">
+              {phaseStats.map(phase => {
+                const p = phase.total > 0 ? Math.round((phase.watchedHere / phase.total) * 100) : 0
+                return (
+                  <div key={phase.key}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px]">{phase.emoji}</span>
+                        <span className="text-[11px] font-semibold text-white">{phase.label}</span>
+                        <span className="text-[9px] hidden sm:inline" style={{ color: '#444' }}>{phase.sub}</span>
+                      </div>
+                      <span className="text-[10px] font-mono tabular-nums" style={{ color: p === 100 ? '#22c55e' : phase.color }}>
+                        {phase.watchedHere}/{phase.total}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#1a1a1a' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${p}%`, background: p === 100 ? '#22c55e' : phase.color }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Infinity Stone Tracker ── */}
+        {watched && (
+          <div className="rounded-2xl p-5" style={{ background: '#0a0a0a', border: '1px solid #1a1a1a' }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#444' }}>
+                ♾️ Infinity Stones
+              </div>
+              <span className="text-[10px] font-mono" style={{ color: '#F5C518' }}>
+                {stonesSeen.length}/6 seen
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {INFINITY_STONES.map(stone => {
+                const seen = stonesSeen.includes(stone.id)
+                const firstFilm = watched.size > 0
+                const appeared = stone.appearances.some(a => watched.has(a.titleId))
+                return (
+                  <button
+                    key={stone.id}
+                    onClick={() => toggleStoneSeen(stone.id)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-left transition-all active:scale-[0.97]"
+                    style={{
+                      background: seen ? `${stone.color}12` : '#111',
+                      border: `1px solid ${seen ? stone.color + '50' : '#1e1e1e'}`,
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-base"
+                      style={{
+                        background: seen ? stone.color + '25' : '#1a1a1a',
+                        border: `1px solid ${seen ? stone.color + '60' : '#252525'}`,
+                        boxShadow: seen ? `0 0 10px ${stone.color}40` : 'none',
+                      }}
+                    >
+                      {stone.emoji}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold truncate" style={{ color: seen ? stone.color : '#666' }}>
+                        {stone.name}
+                      </div>
+                      <div className="text-[9px] truncate" style={{ color: '#444' }}>
+                        {stone.alias}
+                      </div>
+                      {appeared && !seen && (
+                        <div className="text-[9px] font-bold" style={{ color: stone.color + 'cc' }}>
+                          ● appeared in your watches
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            {stonesSeen.length === 6 && (
+              <div className="mt-3 text-center">
+                <span className="text-[11px] font-bold" style={{ color: '#F5C518' }}>
+                  🌟 All six Stones collected. Perfectly balanced.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Daily Fact */}
         {dailyFact && (

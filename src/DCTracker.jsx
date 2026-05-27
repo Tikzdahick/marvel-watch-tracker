@@ -10,6 +10,8 @@ import { DC_ERAS } from './data/dcEras.js'
 import { DC_CHARACTERS } from './data/dcCharacters.js'
 import { DC_ACHIEVEMENTS } from './data/dcAchievements.js'
 import { DC_TRIVIA_QUESTIONS, getDCDailyTrivia, saveDCTriviaAnswer, getDCTriviaStreak } from './data/dcTrivia.js'
+import { DC_MULTIVERSE, DC_VILLAINS, DC_CITIES, DC_BATMAN_ACTORS, SNYDER_COMPARISON, JL_TEAM } from './data/dcExtras.js'
+import { getDCRank, getNextDCRank } from './data/dcRanks.js'
 import { AvatarDisplay } from './AvatarDisplay.jsx'
 import CommunityFeed from './CommunityFeed.jsx'
 import { SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
@@ -20,6 +22,9 @@ const SK_WATCHED   = 'dc-watched-v1'
 const SK_LIST_SIZE = 'dc-list-size'
 const SK_LOGIN     = 'dc-login-dates'
 const SK_ACHIEVE   = 'dc-achievements'
+const SK_VILLAIN_RATINGS = 'dc-villain-ratings'
+const SK_MOOD_RATINGS    = 'dc-mood-ratings'
+const SK_BATMAN_SEEN     = 'dc-batman-seen'
 
 const DC_FILTERS       = ['all','unwatched','watched','movies','tv']
 const DC_FILTER_LABELS = { all:'All', unwatched:'Unwatched', watched:'Watched', movies:'Movies', tv:'TV' }
@@ -129,12 +134,152 @@ function DCCheck({ watched, comingSoon }) {
   )
 }
 
+// ── DC Title Detail Panel ─────────────────────────────────────────────────────
+function DCTitleDetailPanel({ title, isWatched, onToggle, villainRatings, onRateVillain, moodRatings, onSetMood, onClose }) {
+  const mv      = DC_MULTIVERSE[title.id]
+  const villain = DC_VILLAINS[title.id]
+  const cities  = DC_CITIES[title.id] ?? []
+  const villainRating = villainRatings[title.id] ?? 0
+  const moodRating    = moodRatings[title.id] ?? null
+  const isSnyderTitle = title.id === 1014 || title.id === 1019
+
+  return (
+    <div className="fixed inset-0 flex flex-col" style={{ zIndex: 10010, background: 'rgba(0,0,0,0.97)', backdropFilter: 'blur(12px)' }}>
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b" style={{ background: BG_CARD2, borderColor: BORDER }}>
+        <button onClick={onClose} className="flex items-center gap-2 hover:text-white transition-colors py-1 pr-2" style={{ color: TEXT_MID }}>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          <span className="text-sm font-medium">Back</span>
+        </button>
+        {!title.comingSoon && (
+          <button onClick={() => onToggle(title.id)}
+            className="px-4 py-1.5 rounded-xl text-sm font-semibold transition-all"
+            style={isWatched
+              ? { background: 'rgba(255,215,0,0.1)', color: ACCENT, border: `1px solid ${ACCENT}33` }
+              : { background: ACCENT, color: '#000' }}>
+            {isWatched ? '✓ Watched' : 'Mark Watched'}
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-5 pt-5 pb-10 max-w-lg mx-auto w-full">
+
+          {/* Title + universe badges */}
+          <div className="mb-5">
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              <TypeBadge type={title.type}/>
+              {mv && (
+                <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border font-bold tracking-widest"
+                  style={{ background: `${mv.color}18`, color: mv.color, borderColor: `${mv.color}44` }}>
+                  {mv.universe}
+                </span>
+              )}
+            </div>
+            <h2 className="font-bebas text-3xl tracking-widest text-white leading-tight mb-1">{title.title}</h2>
+            {mv && <p className="text-[12px] leading-relaxed" style={{ color: TEXT_MID }}>{mv.desc}</p>}
+          </div>
+
+          {/* City tags */}
+          {cities.length > 0 && (
+            <div className="mb-4">
+              <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>📍 Setting</div>
+              <div className="flex flex-wrap gap-1.5">
+                {cities.map(c => (
+                  <span key={c} className="text-[10px] px-2.5 py-1 rounded-full font-medium"
+                    style={{ background: `${ACCENT}15`, color: ACCENT, border: `1px solid ${ACCENT}30` }}>{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Villain tracker */}
+          {villain && (
+            <div className="rounded-2xl p-4 mb-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+              <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>🦹 Main Villain</div>
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                  {villain.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-white text-sm">{villain.name}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>Played by {villain.actor}</div>
+                  <p className="text-[11px] mt-1.5 leading-snug" style={{ color: TEXT_MAIN }}>{villain.desc}</p>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] uppercase tracking-widest mb-1.5 font-semibold" style={{ color: TEXT_DIM }}>Your Rating</div>
+                <div className="flex items-center gap-1">
+                  {[1,2,3,4,5].map(star => (
+                    <button key={star}
+                      onClick={() => onRateVillain(title.id, star === villainRating ? 0 : star)}
+                      className="text-xl transition-transform active:scale-90 select-none">
+                      {star <= villainRating ? '⭐' : '☆'}
+                    </button>
+                  ))}
+                  {villainRating > 0 && (
+                    <span className="ml-1 text-[10px]" style={{ color: TEXT_DIM }}>{villainRating}/5</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dark / Light mood slider */}
+          <div className="rounded-2xl p-4 mb-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+            <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>🎭 Tone / Mood</div>
+            <div className="flex justify-between text-[10px] mb-2" style={{ color: TEXT_MID }}>
+              <span>🌑 Dark &amp; Gritty</span>
+              <span>☀️ Fun &amp; Hopeful</span>
+            </div>
+            <input type="range" min={1} max={10}
+              value={moodRating ?? 5}
+              onChange={e => onSetMood(title.id, Number(e.target.value))}
+              className="w-full cursor-pointer"
+              style={{ accentColor: ACCENT }}/>
+            <div className="text-center mt-1 text-[10px]" style={{ color: TEXT_DIM }}>
+              {moodRating === null
+                ? 'Drag to rate the tone'
+                : moodRating <= 3 ? `Dark & Gritty (${moodRating}/10)`
+                : moodRating <= 6 ? `Balanced (${moodRating}/10)`
+                : `Fun & Hopeful (${moodRating}/10)`}
+            </div>
+          </div>
+
+          {/* Snyder Cut comparison */}
+          {isSnyderTitle && (
+            <div className="rounded-2xl p-4 mb-4" style={{ background: BG_CARD2, border: `1px solid ${ACCENT}22` }}>
+              <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>⚔️ Snyder Cut Comparison</div>
+              <div className="grid grid-cols-3 gap-1 mb-2">
+                <div className="text-[9px] uppercase tracking-wider font-semibold" style={{ color: TEXT_DIM }}>Category</div>
+                <div className="text-[9px] uppercase tracking-wider font-semibold text-center" style={{ color: '#60a5fa' }}>Theatrical</div>
+                <div className="text-[9px] uppercase tracking-wider font-semibold text-center" style={{ color: ACCENT }}>Snyder Cut</div>
+              </div>
+              {SNYDER_COMPARISON.comparisons.map(row => (
+                <div key={row.category} className="grid grid-cols-3 gap-1 py-1.5 border-t text-[10px]" style={{ borderColor: BORDER }}>
+                  <div className="font-medium" style={{ color: TEXT_MID }}>{row.category}</div>
+                  <div className="text-center leading-tight" style={{ color: '#94a3b8' }}>{row.theatrical}</div>
+                  <div className="text-center leading-tight" style={{ color: TEXT_MAIN }}>{row.snyderCut}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Title Card ────────────────────────────────────────────────────────────────
-function DCTitleCard({ title, isWatched, isNextUp, onToggle }) {
+function DCTitleCard({ title, isWatched, isNextUp, onToggle, onOpenDetail }) {
   const cs = !!title.comingSoon
+  const mv = DC_MULTIVERSE[title.id]
   return (
     <li
-      onClick={() => !cs && onToggle(title.id)}
+      onClick={() => !cs && (onOpenDetail ? onOpenDetail(title) : onToggle(title.id))}
       className={[
         'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all duration-150 select-none relative overflow-hidden',
         cs        ? 'cursor-default opacity-50'
@@ -155,6 +300,12 @@ function DCTitleCard({ title, isWatched, isNextUp, onToggle }) {
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
           <TypeBadge type={title.type}/>
+          {mv && (
+            <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border font-bold tracking-widest"
+              style={{ background: `${mv.color}18`, color: mv.color, borderColor: `${mv.color}44` }}>
+              {mv.universe}
+            </span>
+          )}
           {isNextUp && !isWatched && !cs && (
             <span className="inline-block text-[9px] px-1.5 py-[2px] rounded border font-bold tracking-widest"
               style={{ background: `${ACCENT}1a`, color: ACCENT, borderColor: `${ACCENT}44` }}>
@@ -379,6 +530,30 @@ function DCHomePage({ profile, watched, listTitles, loginDates, onNavigate, onOp
           </div>
         )}
 
+        {/* Lantern Corps rank */}
+        {(() => {
+          const rank = getDCRank(watchedCount)
+          const next = getNextDCRank(watchedCount)
+          return (
+            <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${rank.color}33` }}>
+              <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Your Lantern Rank</div>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">{rank.icon}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bebas text-lg tracking-widest leading-none" style={{ color: rank.color }}>{rank.label}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>{rank.corps} · {rank.emotion}</div>
+                  <p className="text-[10px] mt-1 italic leading-snug" style={{ color: TEXT_DIM }}>"{rank.oath.slice(0, 55)}…"</p>
+                </div>
+              </div>
+              {next && (
+                <div className="mt-2 text-[10px]" style={{ color: TEXT_DIM }}>
+                  Next: {next.icon} {next.label} at {next.minWatched} watched · {next.minWatched - watchedCount} to go
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
         {/* Quick actions */}
         <div>
           <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Quick Actions</div>
@@ -411,7 +586,7 @@ function DCHomePage({ profile, watched, listTitles, loginDates, onNavigate, onOp
 // ─────────────────────────────────────────────────────────────────────────────
 // ── STATS PAGE ────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-function DCStatsPage({ watched, listTitles }) {
+function DCStatsPage({ watched, listTitles, villainRatings }) {
   const countable    = listTitles.filter(t => !t.comingSoon)
   const watchedCount = countable.filter(t => watched.has(t.id)).length
   const total        = countable.length
@@ -500,10 +675,46 @@ function DCStatsPage({ watched, listTitles }) {
       </div>
 
       {/* Era breakdown */}
-      <div className="rounded-2xl p-5" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+      <div className="rounded-2xl p-5 mb-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
         <div className="text-[9px] uppercase tracking-widest mb-4 font-semibold" style={{ color: TEXT_DIM }}>By Era</div>
         {eraStats.map(e => <EraBar key={e.key} e={e}/>)}
       </div>
+
+      {/* Villain leaderboard */}
+      {(() => {
+        const rated = Object.entries(villainRatings ?? {})
+          .filter(([, r]) => r > 0)
+          .map(([id, rating]) => ({ id: Number(id), rating, villain: DC_VILLAINS[Number(id)] }))
+          .filter(v => v.villain)
+          .sort((a, b) => b.rating - a.rating)
+        if (!rated.length) return (
+          <div className="rounded-2xl p-5" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+            <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>🦹 Villain Leaderboard</div>
+            <p className="text-[11px]" style={{ color: TEXT_DIM }}>Rate villains on title pages to build your leaderboard.</p>
+          </div>
+        )
+        return (
+          <div className="rounded-2xl p-5" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+            <div className="text-[9px] uppercase tracking-widest mb-4 font-semibold" style={{ color: TEXT_DIM }}>🦹 Villain Leaderboard</div>
+            {rated.map(({ id, rating, villain }, i) => (
+              <div key={id} className="flex items-center gap-3 py-2 border-t first:border-t-0" style={{ borderColor: BORDER }}>
+                <div className="text-base font-bold w-5 text-center flex-shrink-0" style={{ color: i === 0 ? ACCENT : TEXT_DIM }}>
+                  {i === 0 ? '👑' : i + 1}
+                </div>
+                <div className="text-xl flex-shrink-0">{villain.emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[12px] font-semibold text-white truncate">{villain.name}</div>
+                  <div className="text-[9px]" style={{ color: TEXT_MID }}>{villain.actor}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-[11px]">{'⭐'.repeat(rating)}</div>
+                  <div className="text-[9px] font-bold" style={{ color: ACCENT }}>{rating}/5</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
     </div>
   )
 }
@@ -511,7 +722,7 @@ function DCStatsPage({ watched, listTitles }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ── AWARDS PAGE ───────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-function DCAwardsPage({ watched }) {
+function DCAwardsPage({ watched, listTitles }) {
   const states = useMemo(() => {
     const result = {}
     for (const a of DC_ACHIEVEMENTS) {
@@ -528,6 +739,52 @@ function DCAwardsPage({ watched }) {
         <div className="font-bebas text-2xl tracking-[0.15em] text-white">DC AWARDS</div>
         <div className="text-[11px] font-semibold" style={{ color: ACCENT }}>
           {unlockedCount}/{DC_ACHIEVEMENTS.length} unlocked
+        </div>
+      </div>
+
+      {/* Justice League team tracker */}
+      <div className="mb-6">
+        <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>⚡ Justice League Team Tracker</div>
+        <div className="rounded-2xl p-4 mb-3" style={{ background: BG_CARD2, border: `1px solid ${ACCENT}22` }}>
+          <div className="text-[10px] font-semibold mb-2" style={{ color: TEXT_MID }}>Team Films</div>
+          {JL_TEAM.teamMovies.map(id => {
+            const t = (listTitles ?? []).find(lt => lt.id === id)
+            if (!t) return null
+            const w = watched.has(id)
+            return (
+              <div key={id} className="flex items-center gap-2.5 py-1.5">
+                <div className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center"
+                  style={w ? { background: ACCENT, boxShadow: `0 0 6px rgba(255,215,0,0.4)` } : { border: `1.5px solid ${ACCENT2}`, background: '#050811' }}>
+                  {w && (
+                    <svg className="w-2.5 h-2.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  )}
+                </div>
+                <span className="text-[12px]" style={{ color: w ? ACCENT : TEXT_MID }}>{t.title}</span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {JL_TEAM.members.map(m => {
+            const memberTitles = m.titleIds.filter(id => (listTitles ?? []).some(t => t.id === id && !t.comingSoon))
+            const watchedHere = memberTitles.filter(id => watched.has(id)).length
+            const allDone = memberTitles.length > 0 && watchedHere === memberTitles.length
+            return (
+              <div key={m.key} className="flex items-center gap-2 p-2.5 rounded-xl border"
+                style={{ background: allDone ? `${ACCENT}08` : BG_MAIN, borderColor: allDone ? `${ACCENT}44` : BORDER }}>
+                <span className="text-xl">{m.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-semibold truncate" style={{ color: allDone ? ACCENT : TEXT_MAIN }}>{m.name}</div>
+                  <div className="text-[9px]" style={{ color: TEXT_DIM }}>
+                    {memberTitles.length > 0 ? `${watchedHere}/${memberTitles.length}` : 'No films yet'}
+                  </div>
+                </div>
+                {allDone && <span className="text-xs flex-shrink-0" style={{ color: ACCENT }}>✓</span>}
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -580,7 +837,7 @@ function DCAwardsPage({ watched }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ── HEROES PAGE ───────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
-function DCHeroesPage({ watched }) {
+function DCHeroesPage({ watched, batmanSeen, onToggleBatmanSeen }) {
   const [selected, setSelected] = useState(null)
   const [search, setSearch] = useState('')
 
@@ -656,6 +913,45 @@ function DCHeroesPage({ watched }) {
   return (
     <div className="min-h-screen pb-24 pt-4 max-w-lg mx-auto px-4">
       <div className="font-bebas text-2xl tracking-[0.15em] text-white mb-4">DC HEROES & VILLAINS</div>
+
+      {/* Batman Counter */}
+      <div className="mb-5">
+        <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>
+          🦇 Batman Counter — {(batmanSeen?.size ?? 0)}/{DC_BATMAN_ACTORS.length} actors seen
+        </div>
+        <div className="space-y-2">
+          {DC_BATMAN_ACTORS.map(actor => {
+            const seen = batmanSeen?.has(actor.key) ?? false
+            return (
+              <button key={actor.key} onClick={() => onToggleBatmanSeen?.(actor.key)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98]"
+                style={{ background: seen ? `${actor.color}10` : BG_CARD2, borderColor: seen ? `${actor.color}44` : BORDER }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: seen ? `${actor.color}22` : '#151a25' }}>
+                  {actor.emoji}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-[13px] text-white">{actor.actor}</span>
+                    <span className="text-[9px] px-1.5 py-[2px] rounded font-bold" style={{ color: actor.color, background: `${actor.color}18` }}>{actor.era}</span>
+                  </div>
+                  <div className="text-[10px] mt-0.5" style={{ color: TEXT_DIM }}>{actor.note}</div>
+                </div>
+                <div className="w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center"
+                  style={seen
+                    ? { background: actor.color, boxShadow: `0 0 8px ${actor.color}60` }
+                    : { border: `1.5px solid ${BORDER}`, background: '#050811' }}>
+                  {seen && (
+                    <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Search */}
       <div className="relative mb-4">
@@ -854,6 +1150,30 @@ function DCProfilePage({ profile, watched, listTitles, onBack, onSignOut, onDele
         ))}
       </div>
 
+      {/* Lantern Corps rank */}
+      {(() => {
+        const rank = getDCRank(watchedCount)
+        const next = getNextDCRank(watchedCount)
+        return (
+          <div className="rounded-2xl p-4 mb-4" style={{ background: BG_CARD2, border: `1px solid ${rank.color}33` }}>
+            <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Your Lantern Rank</div>
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">{rank.icon}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bebas text-xl tracking-widest leading-none" style={{ color: rank.color }}>{rank.label}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>{rank.corps} · {rank.emotion}</div>
+                <p className="text-[10px] mt-1 italic leading-snug" style={{ color: TEXT_DIM }}>"{rank.desc}"</p>
+              </div>
+            </div>
+            {next && (
+              <div className="mt-2 text-[10px]" style={{ color: TEXT_DIM }}>
+                Next: {next.icon} {next.label} at {next.minWatched} watched · {next.minWatched - watchedCount} to go
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Back to Marvel */}
       <button onClick={onBack}
         className="w-full py-3 rounded-xl font-bebas text-lg tracking-widest mb-4 transition-all hover:opacity-80"
@@ -964,13 +1284,17 @@ function DCSocialPage({ user, friendIds }) {
 // ── MAIN DC TRACKER ───────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
 export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, onSignOut, onDeleteAccount }) {
-  const [watched,       setWatched]      = useState(() => new Set(loadJSON(SK_WATCHED, [])))
-  const [listSize,      setListSize]     = useState(() => loadJSON(SK_LIST_SIZE, null) ?? dcListSize)
-  const [filter,        setFilter]       = useState('all')
-  const [search,        setSearch]       = useState('')
-  const [collapsedEras, setCollapsedEras] = useState(() => new Set())
-  const [activeTab,     setActiveTab]    = useState('home')
-  const [showTrivia,    setShowTrivia]   = useState(false)
+  const [watched,        setWatched]       = useState(() => new Set(loadJSON(SK_WATCHED, [])))
+  const [listSize,       setListSize]      = useState(() => loadJSON(SK_LIST_SIZE, null) ?? dcListSize)
+  const [filter,         setFilter]        = useState('all')
+  const [search,         setSearch]        = useState('')
+  const [collapsedEras,  setCollapsedEras] = useState(() => new Set())
+  const [activeTab,      setActiveTab]     = useState('home')
+  const [showTrivia,     setShowTrivia]    = useState(false)
+  const [selectedTitle,  setSelectedTitle] = useState(null)
+  const [villainRatings, setVillainRatings] = useState(() => loadJSON(SK_VILLAIN_RATINGS, {}))
+  const [moodRatings,    setMoodRatings]   = useState(() => loadJSON(SK_MOOD_RATINGS, {}))
+  const [batmanSeen,     setBatmanSeen]    = useState(() => new Set(loadJSON(SK_BATMAN_SEEN, [])))
 
   // Track DC login dates for streak
   const [loginDates] = useState(() => {
@@ -996,6 +1320,31 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
   function changeListSize(size) {
     setListSize(size)
     saveJSON(SK_LIST_SIZE, size)
+  }
+
+  function rateVillain(titleId, rating) {
+    setVillainRatings(prev => {
+      const next = { ...prev, [titleId]: rating }
+      saveJSON(SK_VILLAIN_RATINGS, next)
+      return next
+    })
+  }
+
+  function setMoodRating(titleId, rating) {
+    setMoodRatings(prev => {
+      const next = { ...prev, [titleId]: rating }
+      saveJSON(SK_MOOD_RATINGS, next)
+      return next
+    })
+  }
+
+  function toggleBatmanSeen(key) {
+    setBatmanSeen(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      saveJSON(SK_BATMAN_SEEN, [...next])
+      return next
+    })
   }
 
   const listTitles = useMemo(() => getTitlesForSize(listSize), [listSize])
@@ -1239,6 +1588,7 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
                             isWatched={watched.has(t.id)}
                             isNextUp={t.id === nextUpId}
                             onToggle={toggleWatched}
+                            onOpenDetail={setSelectedTitle}
                           />
                         ))}
                       </ul>
@@ -1251,10 +1601,10 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
         </>
       )}
 
-      {activeTab === 'awards'  && <DCAwardsPage watched={watched}/>}
-      {activeTab === 'stats'   && <DCStatsPage watched={watched} listTitles={listTitles}/>}
+      {activeTab === 'awards'  && <DCAwardsPage watched={watched} listTitles={listTitles}/>}
+      {activeTab === 'stats'   && <DCStatsPage watched={watched} listTitles={listTitles} villainRatings={villainRatings}/>}
       {activeTab === 'social'  && <DCSocialPage user={user} friendIds={[]}/>}
-      {activeTab === 'heroes'  && <DCHeroesPage watched={watched}/>}
+      {activeTab === 'heroes'  && <DCHeroesPage watched={watched} batmanSeen={batmanSeen} onToggleBatmanSeen={toggleBatmanSeen}/>}
       {activeTab === 'profile' && (
         <DCProfilePage
           profile={profile}
@@ -1263,6 +1613,20 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
           onBack={onBack}
           onSignOut={onSignOut}
           onDeleteAccount={onDeleteAccount}
+        />
+      )}
+
+      {/* ── DC Title Detail Panel ─────────────────────────────────────────── */}
+      {selectedTitle && (
+        <DCTitleDetailPanel
+          title={selectedTitle}
+          isWatched={watched.has(selectedTitle.id)}
+          onToggle={toggleWatched}
+          villainRatings={villainRatings}
+          onRateVillain={rateVillain}
+          moodRatings={moodRatings}
+          onSetMood={setMoodRating}
+          onClose={() => setSelectedTitle(null)}
         />
       )}
 

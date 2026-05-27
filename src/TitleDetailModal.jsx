@@ -24,7 +24,7 @@
  *   onOpenDetail     (titleId) → void  ← for similar-title navigation
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getTitleMeta } from './data/titleMeta.js'
 import { getPrimaryLock, LOCK_TIERS } from './data/locks.js'
 import { TITLES } from './data/titles.js'
@@ -32,6 +32,11 @@ import { AvatarDisplay } from './AvatarDisplay.jsx'
 import { FACTS }           from './data/facts.js'
 import { CHARACTERS }      from './data/characters.js'
 import { SIMILAR_TITLES }  from './data/recommendations.js'
+import { SNAP_DATA, STAN_LEE_CAMEOS, POST_CREDITS } from './data/marvelExtras.js'
+
+const PC_KEY = 'mvt-post-credits-watched'
+function loadPC() { try { return JSON.parse(localStorage.getItem(PC_KEY) ?? '{}') } catch { return {} } }
+function savePC(v) { try { localStorage.setItem(PC_KEY, JSON.stringify(v)) } catch {} }
 
 const FACTS_DATA  = FACTS          ?? {}
 const CHARS_DATA  = CHARACTERS     ?? {}
@@ -135,11 +140,28 @@ export default function TitleDetailModal({
   const [editingSeason,  setEditingSeason]  = useState(inProgress?.season ?? 1)
   const [editingEp,      setEditingEp]      = useState(inProgress?.episode ?? 1)
   const [showIPEditor,   setShowIPEditor]   = useState(false)
+  // Post-credits watched state
+  const [pcWatched, setPcWatched] = useState(() => loadPC()[title.id] ?? [])
 
   // Data slices
   const titleFacts  = FACTS_DATA[title.id]   ?? []
   const titleChars  = CHARS_DATA[title.id]   ?? []
   const similarIds  = SIMILAR_DATA[title.id] ?? []
+
+  // Marvel extras
+  const snapData    = SNAP_DATA[title.id]       ?? null
+  const cameoData   = STAN_LEE_CAMEOS[title.id] ?? null
+  const pcData      = POST_CREDITS[title.id]    ?? null
+
+  function togglePcScene(idx) {
+    setPcWatched(prev => {
+      const next = prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+      const all = loadPC()
+      all[title.id] = next
+      savePC(all)
+      return next
+    })
+  }
 
   function handleRatingSave(stars) {
     setLocalRating(stars)
@@ -586,6 +608,115 @@ export default function TitleDetailModal({
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {/* ── Snap Tracker (Infinity War / Endgame / Ant-Man & the Wasp) ── */}
+          {snapData && (
+            <div className="mb-6">
+              <SectionLabel>🌌 Snap Tracker</SectionLabel>
+              {snapData.note && (
+                <p className="text-[11px] italic mb-3" style={{ color: '#666' }}>{snapData.note}</p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                {snapData.snapped?.length > 0 && (
+                  <div className="rounded-xl p-3" style={{ background: '#1a0a00', border: '1px solid rgba(232,28,46,0.25)' }}>
+                    <div className="text-[9px] text-[#E81C2E] uppercase tracking-widest font-bold mb-2">💀 Snapped</div>
+                    <div className="space-y-1">
+                      {snapData.snapped.map(name => (
+                        <div key={name} className="text-[11px]" style={{ color: '#999' }}>{name}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {snapData.survived?.length > 0 && (
+                  <div className="rounded-xl p-3" style={{ background: '#001a0a', border: '1px solid rgba(34,197,94,0.25)' }}>
+                    <div className="text-[9px] text-green-400 uppercase tracking-widest font-bold mb-2">✅ Survived</div>
+                    <div className="space-y-1">
+                      {snapData.survived.map(name => (
+                        <div key={name} className="text-[11px]" style={{ color: '#999' }}>{name}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Stan Lee Cameo ── */}
+          {cameoData && (
+            <div className="mb-6">
+              <SectionLabel>👴 Stan Lee Cameo</SectionLabel>
+              <div
+                className="rounded-xl px-4 py-3 flex items-start gap-3"
+                style={{
+                  background: cameoData.hasCameo ? 'rgba(245,197,24,0.06)' : '#111',
+                  border: `1px solid ${cameoData.hasCameo ? 'rgba(245,197,24,0.25)' : '#1e1e1e'}`,
+                }}
+              >
+                <span className="text-2xl flex-shrink-0 mt-0.5">{cameoData.hasCameo ? '✅' : '❌'}</span>
+                <div>
+                  <div className="text-[12px] font-semibold mb-0.5" style={{ color: cameoData.hasCameo ? '#F5C518' : '#555' }}>
+                    {cameoData.hasCameo ? 'Stan Lee appears!' : 'No Stan Lee cameo'}
+                  </div>
+                  {cameoData.desc && (
+                    <p className="text-[11px] leading-snug" style={{ color: '#777' }}>{cameoData.desc}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Post/Mid-Credits Tracker ── */}
+          {pcData && (
+            <div className="mb-6">
+              <SectionLabel>
+                🎬 Post-Credits Scenes
+                <span className="ml-2 normal-case font-normal text-[#555]">
+                  {pcData.count === 0 ? 'None' : `${pcData.count} scene${pcData.count !== 1 ? 's' : ''}`}
+                  {pcData.count > 0 && ` · ${pcWatched.length}/${pcData.count} watched`}
+                </span>
+              </SectionLabel>
+              {pcData.count === 0 ? (
+                <p className="text-[11px] italic" style={{ color: '#555' }}>This film has no post-credits scenes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {pcData.scenes.map((scene, idx) => {
+                    const watched = pcWatched.includes(idx)
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => togglePcScene(idx)}
+                        className="w-full flex items-start gap-3 px-3 py-3 rounded-xl text-left transition-all"
+                        style={{
+                          background: watched ? 'rgba(245,197,24,0.06)' : '#111',
+                          border: `1px solid ${watched ? 'rgba(245,197,24,0.3)' : '#1e1e1e'}`,
+                        }}
+                      >
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{
+                            background: watched ? '#F5C518' : 'transparent',
+                            border: `2px solid ${watched ? '#F5C518' : '#333'}`,
+                          }}
+                        >
+                          {watched && (
+                            <svg className="w-3 h-3 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="text-[9px] uppercase tracking-widest mb-1 font-semibold" style={{ color: watched ? '#F5C518' : '#444' }}>
+                            Scene {idx + 1}{idx === 0 && pcData.count > 1 ? ' (Mid-credits)' : idx === 1 ? ' (Post-credits)' : ''}
+                          </div>
+                          <p className="text-[11px] leading-snug" style={{ color: watched ? '#bbb' : '#666' }}>{scene}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 

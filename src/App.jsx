@@ -59,6 +59,7 @@ import { fetchFriendships, deleteAllUserData } from './lib/supabaseHelpers.js'
 import WatchDatePickerModal from './WatchDatePickerModal.jsx'
 import CharactersPage       from './CharactersPage.jsx'
 import DCTracker            from './DCTracker.jsx'
+import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
 const ERA_COLORS = {
@@ -817,6 +818,8 @@ export default function App() {
   const [reminder,       setReminder]       = useState(() => loadJSON(SK_REMINDER, { time: '20:00', enabled: false }))
   // collapsedEras: Set of era keys the user has collapsed
   const [collapsedEras,  setCollapsedEras]  = useState(() => new Set())
+  // MCU timeline toggle: release order vs chronological story order
+  const [chronoMode,     setChronoMode]     = useState(false)
 
   // ── New feature state ──
   // Tiers: { [titleId]: 'S'|'A'|'B'|'C'|'D' }
@@ -1210,6 +1213,18 @@ export default function App() {
       }
     })
   }, [filter, search, listTitles, watched])
+
+  // ── Chronological sort of visible list ──
+  const chronoVisible = useMemo(() => {
+    if (!chronoMode) return visible
+    const chronoIdx = {}
+    MCU_CHRONO_ORDER.forEach((id, i) => { chronoIdx[id] = i })
+    return [...visible].sort((a, b) => {
+      const ai = chronoIdx[a.id] ?? 9999
+      const bi = chronoIdx[b.id] ?? 9999
+      return ai - bi
+    })
+  }, [visible, chronoMode])
 
   // ── Unwatched + unlocked titles for randomizer wheel ──
   const wheelTitles = useMemo(
@@ -1936,6 +1951,8 @@ export default function App() {
           seasonState={seasonState}
           debateState={debateState}
           onDebateVote={handleDebateVote}
+          watched={watched}
+          allTitles={listTitles}
           onNavigate={(tab) => {
             if (tab === 'profile') { setShowProfile(true) }
             else { setActiveTab(tab) }
@@ -2047,6 +2064,17 @@ export default function App() {
                   {label}
                 </button>
               ))}
+              {/* MCU Timeline toggle */}
+              <button
+                onClick={() => setChronoMode(v => !v)}
+                className="flex-shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all"
+                style={chronoMode
+                  ? { background: 'rgba(245,197,24,0.12)', color: '#F5C518', borderColor: 'rgba(245,197,24,0.35)' }
+                  : { background: '#111', color: '#666', borderColor: '#1e1e1e' }
+                }
+              >
+                {chronoMode ? '📅 Story Order' : '📅 Story Order'}
+              </button>
             </div>
           </div>
 
@@ -2079,8 +2107,14 @@ export default function App() {
             </div>
           </div>
 
-          {/* ── Title list (era-grouped) ── */}
+          {/* ── Title list (era-grouped or chrono) ── */}
           <main className="max-w-lg mx-auto px-4 pb-32">
+            {chronoMode && (
+              <div className="px-1 pt-3 pb-2 flex items-center gap-2">
+                <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: '#F5C518' }}>📅 Chronological Story Order</span>
+                <button onClick={() => setChronoMode(false)} className="text-[10px] text-[#444] hover:text-white transition-colors">← Release order</button>
+              </div>
+            )}
             {visible.length === 0 ? (
               <div className="flex flex-col items-center mt-16 gap-3 text-[#333]">
                 <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -2088,6 +2122,32 @@ export default function App() {
                 </svg>
                 <p className="text-sm">No titles match your filter.</p>
               </div>
+            ) : chronoMode ? (
+              <ul className="space-y-1.5 pt-1">
+                {chronoVisible.map((t, idx) => {
+                  const isLocked = isTitleLocked(t.id, lockPins, unlockedTiers)
+                  const lockKey  = isLocked ? getPrimaryLock(t.id) : null
+                  const lockTier = lockKey  ? LOCK_TIERS[lockKey] : null
+                  return (
+                    <TitleCard
+                      key={t.id}
+                      title={t}
+                      isWatched={watched.has(t.id)}
+                      isNextUp={t.id === nextUpId}
+                      onOpenDetail={() => setDetailModalId(t.id)}
+                      rating={ratings[t.id]}
+                      hasNote={!!notes[t.id]}
+                      isRandomPick={t.id === randomPickId}
+                      isLocked={isLocked}
+                      lockTier={lockTier}
+                      isPlanned={!!planner[t.id]}
+                      inProgress={inProgress[t.id] ?? null}
+                      tier={tiers[t.id] ?? null}
+                      rewatchCount={(rewatches[t.id] ?? []).length}
+                    />
+                  )
+                })}
+              </ul>
             ) : (
               <div>
                 {groupedByEra.map(({ era, titles: eraTitles }) => {
@@ -2141,7 +2201,6 @@ export default function App() {
               </div>
             )}
           </main>
-
           {/* ── Random Pick / Wheel floating button ── */}
           <div className="fixed bottom-20 right-4 z-20 flex flex-col items-end gap-2">
             {randomPickId && !diceSpinning && (() => {
