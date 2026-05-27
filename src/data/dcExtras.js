@@ -42,9 +42,42 @@ export const DC_MULTIVERSE = {
   1027: { universe: 'New DCU', color: '#22c55e', desc: 'Chapter 1 of James Gunn\'s rebooted DCU.' },
   1028: { universe: 'New DCU', color: '#22c55e', desc: 'David Corenswet\'s Superman — the DCU begins.' },
   1029: { universe: 'New DCU', color: '#22c55e', desc: 'Supergirl: Woman of Tomorrow — coming DCU chapter.' },
-  1030: { universe: 'Reevesverse', color: '#94a3b8', desc: 'Matt Reeves\' noir Batman universe.' },
+  1030: { universe: 'New DCU', color: '#22c55e', desc: 'James Gunn\'s DC Universe — The Authority.' },
   1031: { universe: 'New DCU', color: '#22c55e', desc: 'Hal Jordan and John Stewart as Lanterns.' },
   1032: { universe: 'New DCU', color: '#22c55e', desc: 'Batman: The Brave and the Bold — in the New DCU.' },
+  // Reevesverse
+  1033: { universe: 'Reevesverse', color: '#94a3b8', desc: 'Matt Reeves\' noir Year Two — a detective Batman unlike any before.' },
+  // DC Animated
+  1034: { universe: 'DCAU', color: '#a855f7', desc: 'DC Animated Universe — the gold standard of superhero animation.' },
+  1035: { universe: 'DCAU', color: '#a855f7', desc: 'Batman Beyond origin — SubZero bridges the animated series.' },
+  1036: { universe: 'DCAU', color: '#a855f7', desc: 'Batman Beyond — the future Joker story finally told.' },
+  1037: { universe: 'DCAU', color: '#a855f7', desc: 'DC Animated Universe spinoff.' },
+  1046: { universe: 'DC Animated', color: '#7c3aed', desc: 'The definitive animated version of Jason Todd\'s story.' },
+  1048: { universe: 'DC Animated', color: '#7c3aed', desc: 'Grant Morrison\'s masterpiece brought to life.' },
+  1050: { universe: 'DC Animated', color: '#7c3aed', desc: 'Frank Miller\'s Year One — the origin of Batman.' },
+  1053: { universe: 'DC Animated', color: '#7c3aed', desc: 'Frank Miller\'s magnum opus — Part 1.' },
+  1054: { universe: 'DC Animated', color: '#7c3aed', desc: 'Frank Miller\'s magnum opus — Part 2.' },
+  1056: { universe: 'DC Animated', color: '#7c3aed', desc: 'The event that rebooted the DC universe.' },
+  1085: { universe: 'DC Animated', color: '#7c3aed', desc: 'The infinite earths crisis — Part 1.' },
+  1086: { universe: 'DC Animated', color: '#7c3aed', desc: 'The infinite earths crisis — Part 2.' },
+  1087: { universe: 'DC Animated', color: '#7c3aed', desc: 'The infinite earths crisis — Part 3.' },
+  1088: { universe: 'DCAU', color: '#a855f7', desc: 'The foundation of modern superhero animation.' },
+  1089: { universe: 'DCAU', color: '#a855f7', desc: 'Shared universe with Batman TAS — Superman\'s defining animated saga.' },
+  1090: { universe: 'DCAU', color: '#a855f7', desc: 'Gotham\'s future — Terry McGinnis as the new Batman.' },
+  1092: { universe: 'DCAU', color: '#a855f7', desc: 'The DCAU expands to the full Justice League.' },
+  1095: { universe: 'DCAU', color: '#a855f7', desc: 'The DCAU at its peak — unlimited heroes, unlimited stories.' },
+  1096: { universe: 'Young Justice', color: '#22d3ee', desc: 'The covert ops team the Justice League doesn\'t talk about.' },
+  // Arrowverse
+  1108: { universe: 'Arrowverse', color: '#22c55e', desc: 'The show that launched the Arrowverse.' },
+  1109: { universe: 'Arrowverse', color: '#22c55e', desc: 'The Fastest Man Alive joins the Arrowverse.' },
+  1111: { universe: 'Gothamverse', color: '#6b7280', desc: 'Before Batman — the origin of Gotham\'s legends.' },
+  1112: { universe: 'Arrowverse', color: '#22c55e', desc: 'Earth-38\'s Supergirl joins the Arrowverse crossover.' },
+  1113: { universe: 'Arrowverse', color: '#22c55e', desc: 'Time travel misfits saving the timeline.' },
+  1114: { universe: 'Luciferverse', color: '#f97316', desc: 'The Devil runs a nightclub in Los Angeles.' },
+  1116: { universe: 'Titans Universe', color: '#4f46e5', desc: 'A darker, live-action Teen Titans.' },
+  1117: { universe: 'Doom Patrol Universe', color: '#dc2626', desc: 'The strangest team in comics, finally on screen.' },
+  1121: { universe: 'Arrowverse', color: '#22c55e', desc: 'Clark and Lois raise their family in Smallville.' },
+  1123: { universe: 'Sandman Universe', color: '#1e1b4b', desc: 'The Lord of Dreams walks the waking world.' },
 }
 
 // ── Villain Tracker ───────────────────────────────────────────────────────────
@@ -77,6 +110,8 @@ export const DC_VILLAINS = {
   1026: { name: 'Black Manta',      actor: 'Yahya Abdul-Mateen II', emoji: '🔱', desc: 'Black Manta returns with the Trident of Kordax to destroy Aquaman.' },
   1027: { name: 'The Thinker',      actor: 'Voiced cast',         emoji: '🧠', desc: 'The big-brained villain behind Amanda Waller\'s schemes in the Commandos.' },
   1028: { name: 'Lex Luthor',       actor: 'Nicholas Hoult',      emoji: '💼', desc: 'A new, scheming Lex Luthor in the rebooted DCU.' },
+  // Reevesverse
+  1033: { name: 'The Riddler',      actor: 'Paul Dano',           emoji: '❓', desc: 'A serial-killing conspiracy theorist unmasking the corruption at Gotham\'s rotten core.' },
 }
 
 // ── City Tags ─────────────────────────────────────────────────────────────────
@@ -113,6 +148,8 @@ export const DC_CITIES = {
   1030: ['Gotham City'],
   1031: ['Multiverse'],
   1032: ['Gotham City'],
+  // Reevesverse
+  1033: ['Gotham City'],
 }
 
 // ── Batman Actors ─────────────────────────────────────────────────────────────
@@ -183,7 +220,7 @@ export const DC_BATMAN_ACTORS = [
     era: '2022',
     emoji: '🦇',
     desc: 'The Batman. A noir detective story — Year Two of an obsessed, grieving Bruce Wayne.',
-    filmIds: [1030],
+    filmIds: [1033],
     note: 'The Batman (2022) — Reevesverse',
     color: '#94a3b8',
   },
