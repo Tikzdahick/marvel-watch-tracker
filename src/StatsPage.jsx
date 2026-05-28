@@ -802,14 +802,17 @@ export default function StatsPage({
   }, [ratedTitles, ratings])
 
   // Completion prediction based on watch pace
+  // Uses watchedTitles/listTitles directly — totalWatched/totalAvail are declared later
   const completionPrediction = useMemo(() => {
+    const tw = watchedTitles.length
+    const ta = listTitles.length
     const entries = Object.entries(watchHistory || {}).filter(([, ids]) => ids?.length)
-    if (entries.length < 3 || !totalWatched) return null
+    if (entries.length < 3 || !tw) return null
     const sorted = entries.sort((a, b) => a[0].localeCompare(b[0]))
     const firstDate = new Date(sorted[0][0] + 'T12:00')
     const daysSinceStart = Math.max(1, (Date.now() - firstDate.getTime()) / 86400000)
-    const dailyPace = totalWatched / daysSinceStart
-    const remaining = totalAvail - totalWatched
+    const dailyPace = tw / daysSinceStart
+    const remaining = ta - tw
     if (remaining <= 0) return { done: true }
     const daysToFinish = Math.ceil(remaining / dailyPace)
     const finishDate = new Date(Date.now() + daysToFinish * 86400000)
@@ -819,7 +822,7 @@ export default function StatsPage({
       daysToFinish,
       finishDate: finishDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     }
-  }, [watchHistory, totalWatched, totalAvail])
+  }, [watchHistory, watchedTitles, listTitles])
 
   // ── Weekly goal ──
   const thisWeekStart = useMemo(() => {
