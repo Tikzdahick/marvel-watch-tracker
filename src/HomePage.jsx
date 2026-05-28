@@ -107,6 +107,15 @@ function CountdownUnit({ value, label }) {
   )
 }
 
+// ── Hidden Gems data ────────────────────────────────────────────────────────────
+const HIDDEN_GEMS = [
+  { id: 27, title: 'Thor: The Dark World', year: 2013, imdb: '6.9', reason: "Loki at his manipulative best and a dark fairy-tale tone unlike any MCU film." },
+  { id: 23, title: 'The Incredible Hulk', year: 2008, imdb: '6.6', reason: "The only standalone Hulk film — a surprisingly grounded superhero origin story." },
+  { id: 22, title: 'Iron Man 2', year: 2010, imdb: '7.0', reason: "Whiplash, Black Widow's MCU debut, and Tony building a new element. Criminally underrated." },
+  { id: 55, title: 'Eternals', year: 2021, imdb: '6.3', reason: "Chloé Zhao's stunning cosmic epic with visuals unlike anything else in the MCU." },
+  { id: 46, title: 'Ant-Man and the Wasp', year: 2018, imdb: '7.0', reason: "Pure fun in the Quantum Realm — secretly sets up the entire Endgame time heist." },
+]
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function HomePage({
@@ -117,6 +126,8 @@ export default function HomePage({
   onSelectFranchise,
   watched,         // Set of watched IDs — for phase progress + stone tracker
   allTitles = [],  // full list of titles for phase lookup
+  onOpenDetail,    // (titleId) => void
+  onOpenRelationshipMap, // () => void
 }) {
   const { watchedCount, total, remaining, pct, unlockedAchievements } = stats
 
@@ -573,6 +584,69 @@ export default function HomePage({
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Hidden Gems ── */}
+        <div className="rounded-2xl overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid rgba(245,197,24,0.15)' }}>
+          <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+            <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#F5C518' }}>
+              💎 Hidden Gems
+            </div>
+            <span className="text-[9px] text-[#444]">Underrated picks worth your time</span>
+          </div>
+          <div className="space-y-0">
+            {HIDDEN_GEMS.map((gem, i) => (
+              <button
+                key={gem.id}
+                onClick={() => onOpenDetail?.(gem.id)}
+                className="w-full flex items-start gap-3 px-4 py-3 text-left transition-all active:scale-[0.98] group"
+                style={{ borderTop: i > 0 ? '1px solid #151515' : 'none' }}
+              >
+                <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold mt-0.5"
+                  style={{ background: 'rgba(245,197,24,0.1)', border: '1px solid rgba(245,197,24,0.2)', color: '#F5C518' }}>
+                  💎
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-white text-[13px] font-semibold group-hover:text-[#F5C518] transition-colors leading-snug">
+                      {gem.title}
+                    </span>
+                    <span className="text-[10px] font-mono flex-shrink-0" style={{ color: '#F5C518' }}>⭐{gem.imdb}</span>
+                  </div>
+                  <p className="text-[11px] leading-snug" style={{ color: '#555' }}>{gem.reason}</p>
+                </div>
+                {watched?.has(gem.id) ? (
+                  <span className="text-[10px] flex-shrink-0 mt-1 font-bold" style={{ color: '#4ade80' }}>✓</span>
+                ) : (
+                  <span className="text-[10px] flex-shrink-0 mt-1 font-semibold px-2 py-0.5 rounded-lg transition-all"
+                    style={{ background: 'rgba(232,28,46,0.1)', color: '#E81C2E', border: '1px solid rgba(232,28,46,0.2)' }}>
+                    Watch
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Relationship Map ── */}
+        {onOpenRelationshipMap && (
+          <button
+            onClick={onOpenRelationshipMap}
+            className="w-full flex items-center gap-4 rounded-2xl p-4 text-left transition-all active:scale-[0.98]"
+            style={{ background: '#0f0f0f', border: '1px solid rgba(96,165,250,0.2)' }}
+          >
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+              style={{ background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.25)' }}>
+              🕸
+            </div>
+            <div className="flex-1">
+              <div className="text-white text-[13px] font-semibold">MCU Relationship Map</div>
+              <div className="text-[#444] text-[10px]">Interactive character network — 60+ heroes & villains</div>
+            </div>
+            <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#60a5fa' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+            </svg>
+          </button>
         )}
 
         {/* Daily Fact */}

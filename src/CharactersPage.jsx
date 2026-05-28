@@ -117,6 +117,143 @@ function applyAdvancedFilters(profiles, filters) {
   })
 }
 
+// ── Hero Groups data ───────────────────────────────────────────────────────────
+export const HERO_GROUPS = [
+  { id: 'avengers',       emoji: '🛡', name: 'Avengers',            color: '#E81C2E',
+    members: ['Iron Man','Captain America','Thor','Hulk','Black Widow','Hawkeye','War Machine','Falcon','Ant-Man','Wasp','Spider-Man','Doctor Strange','Black Panther','Captain Marvel','Scarlet Witch','Vision','Quicksilver','Mantis','Nebula','Star-Lord','Groot','Rocket','Drax','Gamora','Okoye','Wong','Shang-Chi','Kate Bishop','Yelena Belova','Sam Wilson','Bucky Barnes'] },
+  { id: 'xmen',           emoji: '✖', name: 'X-Men',               color: '#facc15',
+    members: ['Professor X','Magneto','Jean Grey','Cyclops','Storm','Rogue','Gambit','Wolverine','Beast','Iceman','Nightcrawler','Jubilee','Psylocke','Angel','Colossus','Deadpool','Cable','Domino','X-23','Negasonic Teenage Warhead','Quicksilver','Mystique','Banshee','Havok','Darwin','Dazzler','Polaris'] },
+  { id: 'guardians',      emoji: '🌌', name: 'Guardians of the Galaxy', color: '#f97316',
+    members: ['Star-Lord','Gamora','Drax','Rocket','Groot','Nebula','Mantis','Yondu','Kraglin','Adam Warlock','Phyla-Vell','Cosmo','Howard the Duck','Stakar'] },
+  { id: 'defenders',      emoji: '⚖', name: 'Defenders',            color: '#a78bfa',
+    members: ['Daredevil','Jessica Jones','Luke Cage','Iron Fist','Punisher','Elektra'] },
+  { id: 'shield',         emoji: '🔵', name: 'S.H.I.E.L.D.',        color: '#60a5fa',
+    members: ['Nick Fury','Phil Coulson','Maria Hill','Melinda May','Daisy Johnson','Leo Fitz','Jemma Simmons','Mack','Lance Hunter','Bobbi Morse','Elena Rodriguez'] },
+  { id: 'hydra',          emoji: '🐙', name: 'HYDRA',               color: '#6b7280',
+    members: ['Red Skull','Arnim Zola','Alexander Pierce','Crossbones','Grant Ward','John Garrett','Daniel Whitehall'] },
+  { id: 'asgardians',     emoji: '⚡', name: 'Asgardians',           color: '#fcd34d',
+    members: ['Thor','Loki','Odin','Frigga','Heimdall','Sif','Valkyrie','Volstagg','Fandral','Hogun','Skurge','Hela'] },
+  { id: 'eternals-group', emoji: '🌟', name: 'Eternals',             color: '#818cf8',
+    members: ['Sersi','Ikaris','Thena','Gilgamesh','Druig','Makkari','Phastos','Kingo','Sprite','Ajak'] },
+  { id: 'wakandans',      emoji: '🌿', name: 'Wakandans',            color: '#a3e635',
+    members: ['Black Panther','Shuri','Okoye','Nakia','Ramonda','M\'Baku','Ayo','Aneka','W\'Kabi','Zuri','T\'Chaka'] },
+  { id: 'skrulls',        emoji: '👽', name: 'Skrulls',              color: '#34d399',
+    members: ['Talos','Soren','G\'iah','Gravik','Beto','Pagon','Brogan','Brixo','Kora'] },
+  { id: 'symbiotes',      emoji: '🖤', name: 'Symbiotes',            color: '#1e1b4b',
+    members: ['Venom','Carnage','Shriek','Eddie Brock','Anne Weying','Dan Lewis'] },
+  { id: 'midnight-sons',  emoji: '🌙', name: 'Midnight Sons',        color: '#94a3b8',
+    members: ['Moon Knight','Blade','Ghost Rider','Elsa Bloodstone','Man-Thing','Werewolf by Night'] },
+  { id: 'spider-verse',   emoji: '🕷', name: 'Spider-Verse',         color: '#f9a8d4',
+    members: ['Spider-Man (Peter Parker)','Miles Morales','Spider-Man Noir','Spider-Ham','Peni Parker','Gwen Stacy','Spider-Man 2099'] },
+  { id: 'thunderbolts',   emoji: '⚡', name: 'Thunderbolts*',        color: '#f87171',
+    members: ['Yelena Belova','US Agent','Ghost','Red Guardian','Taskmaster','Bucky Barnes','Sentry'] },
+  { id: 'young-avengers', emoji: '🌱', name: 'Young Avengers',       color: '#7dd3fc',
+    members: ['Kate Bishop','America Chavez','Wiccan','Speed','Kid Loki','Patriot','Stature','Iron Lad'] },
+  { id: 'illuminati',     emoji: '💡', name: 'Illuminati',           color: '#c084fc',
+    members: ['Iron Man','Captain America','Professor X','Reed Richards','Black Bolt','Namor','Doctor Strange'] },
+  { id: 'sinister-six',   emoji: '☠', name: 'Sinister Six',         color: '#fb923c',
+    members: ['Doctor Octopus','Green Goblin','Electro','Vulture','Sandman','Mysterio'] },
+  { id: 'black-order',    emoji: '💀', name: 'Black Order',          color: '#7f1d1d',
+    members: ['Thanos','Corvus Glaive','Proxima Midnight','Ebony Maw','Cull Obsidian','Black Dwarf'] },
+  { id: 'nova-corps',     emoji: '🌠', name: 'Nova Corps',           color: '#fbbf24',
+    members: ['Nova Prime','Rhomann Dey','Denarian Saal','Garthan Saal'] },
+  { id: 'ravagers',       emoji: '🏴‍☠️', name: 'Ravagers',           color: '#f97316',
+    members: ['Yondu','Kraglin','Stakar','Aleta','Charlie-27','Martinex','Krugarr'] },
+]
+
+// name → profile (case-insensitive best-effort lookup)
+function findProfileByName(name) {
+  const lower = name.toLowerCase()
+  return CHARACTER_PROFILES.find(p =>
+    p.name.toLowerCase() === lower ||
+    p.alias.toLowerCase() === lower ||
+    p.charKey?.toLowerCase() === lower
+  )
+}
+
+// ── GroupsView ─────────────────────────────────────────────────────────────────
+function GroupsView({ onSelectProfile }) {
+  const [openGroup, setOpenGroup] = useState(null)
+
+  return (
+    <div className="space-y-2">
+      {HERO_GROUPS.map(group => {
+        const isOpen = openGroup === group.id
+        return (
+          <div
+            key={group.id}
+            className="rounded-2xl overflow-hidden"
+            style={{ border: `1px solid ${group.color}25`, background: '#0e0e0e' }}
+          >
+            {/* Group header */}
+            <button
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-all"
+              onClick={() => setOpenGroup(isOpen ? null : group.id)}
+            >
+              <span className="text-xl flex-shrink-0">{group.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-[14px] text-white leading-snug">{group.name}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: group.color + 'aa' }}>
+                  {group.members.length} members
+                </div>
+              </div>
+              <svg
+                className="w-4 h-4 flex-shrink-0 transition-transform"
+                style={{ color: '#444', transform: isOpen ? 'rotate(90deg)' : 'none' }}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </button>
+
+            {/* Member list */}
+            {isOpen && (
+              <div style={{ borderTop: `1px solid ${group.color}15`, padding: '12px 16px 16px' }}>
+                <div className="grid grid-cols-2 gap-2">
+                  {group.members.map(name => {
+                    const profile = findProfileByName(name)
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => profile && onSelectProfile(profile.id)}
+                        className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all active:scale-95"
+                        style={{
+                          background: profile ? `${group.color}0d` : '#111',
+                          border: `1px solid ${profile ? group.color + '30' : '#1a1a1a'}`,
+                          cursor: profile ? 'pointer' : 'default',
+                        }}
+                      >
+                        {/* Avatar */}
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0"
+                          style={{ background: profile ? `${group.color}22` : '#1a1a1a', border: `1px solid ${profile ? group.color + '40' : '#222'}` }}>
+                          {profile?.img
+                            ? <img src={profile.img} alt={name} className="w-full h-full object-cover object-top" onError={e => { e.target.style.display='none' }}/>
+                            : <div className="w-full h-full flex items-center justify-center text-xs" style={{ color: group.color }}>
+                                {profile?.symbol ?? name[0]}
+                              </div>
+                          }
+                        </div>
+                        <span className="text-[11px] leading-snug truncate" style={{ color: profile ? '#ccc' : '#444' }}>
+                          {name}
+                        </span>
+                        {profile && (
+                          <svg className="w-3 h-3 flex-shrink-0 ml-auto" style={{ color: group.color + '80' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                          </svg>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // Daily featured character — changes each day, picks from well-represented ones
 function getDailyFeatured() {
   const day  = Math.floor(Date.now() / 86400000)
@@ -677,6 +814,7 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
   const [selected,   setSelected]   = useState(null)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filters,    setFilters]    = useState(BLANK_FILTERS)
+  const [viewMode,   setViewMode]   = useState('browse') // 'browse' | 'groups'
   const tabsRef = useRef(null)
   const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters])
 
@@ -796,7 +934,40 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
         </div>
       </div>
 
-      {/* ── FILTER TABS ── */}
+      {/* ── VIEW MODE TOGGLE ── */}
+      <div className="flex gap-2 px-4 pb-3">
+        <button
+          onClick={() => setViewMode('browse')}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold tracking-wide transition-all active:scale-95"
+          style={{
+            background: viewMode === 'browse' ? '#E81C2E' : '#111',
+            color:      viewMode === 'browse' ? '#fff' : '#555',
+            border:     viewMode === 'browse' ? '1.5px solid transparent' : '1.5px solid #1e1e1e',
+            boxShadow:  viewMode === 'browse' ? '0 0 14px rgba(232,28,46,0.35)' : 'none',
+          }}
+        >
+          🔍 Browse
+        </button>
+        <button
+          onClick={() => setViewMode('groups')}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold tracking-wide transition-all active:scale-95"
+          style={{
+            background: viewMode === 'groups' ? '#F5C518' : '#111',
+            color:      viewMode === 'groups' ? '#000' : '#555',
+            border:     viewMode === 'groups' ? '1.5px solid transparent' : '1.5px solid #1e1e1e',
+            boxShadow:  viewMode === 'groups' ? '0 0 14px rgba(245,197,24,0.35)' : 'none',
+          }}
+        >
+          👥 Groups
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full ml-1"
+            style={{ background: viewMode === 'groups' ? 'rgba(0,0,0,0.2)' : '#1e1e1e' }}>
+            {HERO_GROUPS.length}
+          </span>
+        </button>
+      </div>
+
+      {/* ── FILTER TABS (only in browse mode) ── */}
+      {viewMode === 'browse' && (
       <div ref={tabsRef} className="flex gap-2 overflow-x-auto px-4 pb-4 no-scrollbar">
         {FILTER_TABS.map(tab => {
           const active = activeTab === tab.id
@@ -817,51 +988,67 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
           )
         })}
       </div>
+      )}
 
       <div className="px-4">
 
-        {/* ── FEATURED BANNER ── */}
-        {showFeatured && (
+        {/* ── GROUPS VIEW ── */}
+        {viewMode === 'groups' && (
+          <>
+            <div className="text-[10px] uppercase tracking-widest text-[#444] mb-3 font-semibold">
+              {HERO_GROUPS.length} groups · {HERO_GROUPS.reduce((s, g) => s + g.members.length, 0)} total members
+            </div>
+            <GroupsView onSelectProfile={id => setSelected(id)} />
+          </>
+        )}
+
+        {/* ── FEATURED BANNER (browse mode only) ── */}
+        {viewMode === 'browse' && showFeatured && (
           <FeaturedBanner
             profile={featuredProfile}
             onViewProfile={() => setSelected(featuredProfile.id)}
           />
         )}
 
-        {/* ── RESULT META ── */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[10px]" style={{ color: '#2e2e2e' }}>
-            {sorted.length} character{sorted.length !== 1 ? 's' : ''}
-            {favorites.size > 0 ? ` · ${favorites.size} ★ favorited` : ''}
-          </span>
-          {favorites.size > 0 && !search && (
-            <span className="text-[9px]" style={{ color: '#F5C51880' }}>★ favorites first</span>
-          )}
-        </div>
+        {/* ── BROWSE MODE CONTENT ── */}
+        {viewMode === 'browse' && (
+          <>
+            {/* ── RESULT META ── */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px]" style={{ color: '#2e2e2e' }}>
+                {sorted.length} character{sorted.length !== 1 ? 's' : ''}
+                {favorites.size > 0 ? ` · ${favorites.size} ★ favorited` : ''}
+              </span>
+              {favorites.size > 0 && !search && (
+                <span className="text-[9px]" style={{ color: '#F5C51880' }}>★ favorites first</span>
+              )}
+            </div>
 
-        {/* ── 2-COLUMN GRID ── */}
-        {sorted.length === 0 ? (
-          <div className="flex flex-col items-center mt-24 gap-3">
-            <span className="text-5xl">🦸</span>
-            <p className="text-[14px]" style={{ color: '#3a3a3a' }}>No characters found</p>
-            {search && (
-              <button onClick={() => setSearch('')} className="text-[12px] underline" style={{ color: '#E81C2E' }}>
-                Clear search
-              </button>
+            {/* ── 2-COLUMN GRID ── */}
+            {sorted.length === 0 ? (
+              <div className="flex flex-col items-center mt-24 gap-3">
+                <span className="text-5xl">🦸</span>
+                <p className="text-[14px]" style={{ color: '#3a3a3a' }}>No characters found</p>
+                {search && (
+                  <button onClick={() => setSearch('')} className="text-[12px] underline" style={{ color: '#E81C2E' }}>
+                    Clear search
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {sorted.map(profile => (
+                  <CharacterCard
+                    key={profile.id}
+                    profile={profile}
+                    isFav={favorites.has(profile.id)}
+                    onToggleFav={toggleFav}
+                    onClick={() => setSelected(profile.id)}
+                  />
+                ))}
+              </div>
             )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {sorted.map(profile => (
-              <CharacterCard
-                key={profile.id}
-                profile={profile}
-                isFav={favorites.has(profile.id)}
-                onToggleFav={toggleFav}
-                onClick={() => setSelected(profile.id)}
-              />
-            ))}
-          </div>
+          </>
         )}
       </div>
 

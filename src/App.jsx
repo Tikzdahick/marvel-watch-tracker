@@ -14,6 +14,7 @@ import AuthScreen from './AuthScreen.jsx'
 import HomePage from './HomePage.jsx'
 import TierPromptModal from './TierPromptModal.jsx'
 import TierListPage from './TierListPage.jsx'
+import RelationshipMapPage from './RelationshipMapPage.jsx'
 import TriviaModal, { getTodayDateStr } from './TriviaModal.jsx'
 import WatchPartyModal from './WatchPartyModal.jsx'
 import MoodPickerModal from './MoodPickerModal.jsx'
@@ -847,8 +848,9 @@ export default function App() {
   const [taggedWatches, setTaggedWatches] = useState(() => loadJSON(SK_TAGGED, {}))
 
   // ── Trivia rank system state ──
-  const [showLeaderboard, setShowLeaderboard] = useState(false)
-  const [showDuel,        setShowDuel]        = useState(false)
+  const [showLeaderboard,      setShowLeaderboard]      = useState(false)
+  const [showDuel,             setShowDuel]             = useState(false)
+  const [showRelationshipMap,  setShowRelationshipMap]  = useState(false)
   const [rankUp,          setRankUp]          = useState(null)   // rank object | null
   const prevRankKey = useRef(null) // track rank changes
 
@@ -1724,6 +1726,14 @@ export default function App() {
         />
       )}
 
+      {/* ── RELATIONSHIP MAP ── */}
+      {showRelationshipMap && (
+        <RelationshipMapPage
+          onClose={() => setShowRelationshipMap(false)}
+          onOpenCharacter={charKey => { setShowRelationshipMap(false); setActiveTab('characters'); setTimeout(() => setCharacterFocus(charKey), 80) }}
+        />
+      )}
+
       {/* ── TIER LIST PAGE ── */}
       {showTierList && (
         <TierListPage
@@ -1978,6 +1988,8 @@ export default function App() {
             setActiveFranchise(franchise)
             saveJSON('mvt-franchise', franchise)
           }}
+          onOpenDetail={tid => setDetailModalId(tid)}
+          onOpenRelationshipMap={() => setShowRelationshipMap(true)}
         />
       )}
 

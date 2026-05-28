@@ -33,6 +33,7 @@ import { FACTS }           from './data/facts.js'
 import { CHARACTERS }      from './data/characters.js'
 import { SIMILAR_TITLES }  from './data/recommendations.js'
 import { SNAP_DATA, STAN_LEE_CAMEOS, POST_CREDITS } from './data/marvelExtras.js'
+import { getStreamingPlatforms } from './data/streamingData.js'
 
 const PC_KEY = 'mvt-post-credits-watched'
 function loadPC() { try { return JSON.parse(localStorage.getItem(PC_KEY) ?? '{}') } catch { return {} } }
@@ -288,12 +289,33 @@ export default function TitleDetailModal({
           )}
 
           {/* Meta pills */}
-          <div className="flex flex-wrap gap-2 mb-5">
-            <MetaPill icon={serviceIcon} label={meta.service}/>
+          <div className="flex flex-wrap gap-2 mb-4">
             {meta.imdb && meta.imdb !== 'N/A' && <MetaPill icon="⭐" label={`IMDb ${meta.imdb}`}/>}
             {meta.runtime && meta.runtime !== 'N/A' && <MetaPill icon="⏱" label={meta.runtime}/>}
             <MetaPill icon="📋" label={`#${String(title.id).padStart(2, '0')}`}/>
           </div>
+
+          {/* ── Where to Watch ── */}
+          {(() => {
+            const platforms = getStreamingPlatforms(title.id)
+            return (
+              <div className="mb-5">
+                <SectionLabel>📡 Where to Watch</SectionLabel>
+                <div className="flex flex-wrap gap-2">
+                  {platforms.map((p, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style={{ background: p.bg, border: `1px solid ${p.border}` }}
+                    >
+                      <span className="text-sm leading-none">{p.emoji}</span>
+                      <span className="text-[13px] font-semibold" style={{ color: p.color }}>{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
 
           {/* ── Synopsis ── */}
           {meta.desc && meta.desc !== 'No description available.' ? (
