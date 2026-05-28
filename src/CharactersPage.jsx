@@ -6,7 +6,7 @@
  *   watchedIds   — Set of watched title IDs (for showing watched status on linked titles)
  */
 import { useState, useMemo, useEffect } from 'react'
-import { CHARACTER_PROFILES, AFFILIATIONS } from './data/characterProfiles.js'
+import { CHARACTER_PROFILES, AFFILIATIONS, CHARACTER_PROFILE_MAP, CONNECTIONS } from './data/characterProfiles.js'
 import { CHARACTER_TITLES }                  from './data/characters.js'
 import { TITLES }                            from './data/titles.js'
 
@@ -115,13 +115,20 @@ function CharacterCard({ profile, isFav, onToggleFav, onClick }) {
 }
 
 // ── CharacterDetailPanel ───────────────────────────────────────────────────────
-function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenTitle, onClose }) {
+function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenTitle, onClose, onNavigateToProfile }) {
   const titleIds  = CHARACTER_TITLES[profile.charKey] ?? []
   const titles    = titleIds.map(id => TITLES.find(t => t.id === id)).filter(Boolean)
   const [showAllTitles, setShowAllTitles] = useState(false)
   const visibleTitles = showAllTitles ? titles : titles.slice(0, 6)
 
   const affiliationLabel = AFFILIATIONS.find(a => a.id === profile.affiliation)?.label ?? profile.affiliation
+
+  // Derive connections: use CONNECTIONS map first, fall back to allies array
+  const connectedKeys = CONNECTIONS[profile.charKey] ?? profile.allies ?? []
+  const connections = connectedKeys
+    .map(key => CHARACTER_PROFILE_MAP[key])
+    .filter(Boolean)
+    .slice(0, 8)
 
   return (
     <div
@@ -214,12 +221,43 @@ function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenT
             </ul>
           </div>
 
-          {/* Allies & Enemies */}
+          {/* Connections — clickable profile cards */}
+          {connections.length > 0 && (
+            <div className="mb-6">
+              <div className="text-[10px] text-[#444] uppercase tracking-widest mb-3 font-semibold">Connections</div>
+              <div className="grid grid-cols-2 gap-2">
+                {connections.map(conn => (
+                  <button
+                    key={conn.id}
+                    onClick={() => onNavigateToProfile?.(conn.charKey)}
+                    className="flex items-center gap-2.5 p-3 rounded-xl bg-[#111] border border-[#1e1e1e] hover:border-[#333] text-left transition-all active:scale-[0.97]"
+                  >
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 text-base"
+                      style={{ background: conn.bg, border: `1.5px solid ${conn.color}40` }}
+                    >
+                      {conn.symbol}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-bold truncate" style={{ color: conn.color }}>{conn.alias}</div>
+                      <div className="text-[9px] text-[#555] truncate">{conn.name}</div>
+                    </div>
+                    <svg className="w-3 h-3 flex-shrink-0 text-[#444]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Allies & Enemies (text tags) */}
+          {(profile.allies?.length > 0 || profile.enemies?.length > 0) && (
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div>
               <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Allies</div>
               <div className="flex flex-wrap gap-1.5">
-                {profile.allies.length > 0
+                {(profile.allies ?? []).length > 0
                   ? profile.allies.map(a => (
                       <span key={a} className="text-[10px] px-2 py-1 rounded-lg bg-[#111] border border-[#1e1e1e] text-[#888]">{a}</span>
                     ))
@@ -230,7 +268,7 @@ function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenT
             <div>
               <div className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Enemies</div>
               <div className="flex flex-wrap gap-1.5">
-                {profile.enemies.length > 0
+                {(profile.enemies ?? []).length > 0
                   ? profile.enemies.map(e => (
                       <span key={e} className="text-[10px] px-2 py-1 rounded-lg bg-[#E81C2E]/5 border border-[#E81C2E]/15 text-[#E81C2E]/70">{e}</span>
                     ))
@@ -239,6 +277,7 @@ function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenT
               </div>
             </div>
           </div>
+          )}
 
           {/* Appears in */}
           {titles.length > 0 && (
@@ -424,6 +463,10 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
             onOpenTitle?.(id)
           }}
           onClose={() => setSelected(null)}
+          onNavigateToProfile={charKey => {
+            const p = CHARACTER_PROFILES.find(pr => pr.charKey === charKey)
+            if (p) setSelected(p.id)
+          }}
         />
       )}
     </div>
