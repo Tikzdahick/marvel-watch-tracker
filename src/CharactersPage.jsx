@@ -5,6 +5,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { CHARACTER_PROFILES, CHARACTER_PROFILE_MAP, CONNECTIONS } from './data/characterProfiles.js'
 import { CHARACTER_TITLES } from './data/characters.js'
 import { TITLES } from './data/titles.js'
+import { getCharAttrs } from './data/characterAttributes.js'
 
 // ── constants ──────────────────────────────────────────────────────────────────
 const FAVORITES_KEY = 'mvt-char-favorites'
@@ -75,6 +76,45 @@ function applyFilter(profiles, tab) {
     case 'spiderverse': return profiles.filter(p => SPIDER_IDS.has(p.id))
     default:            return profiles
   }
+}
+
+// ── Advanced filter config ─────────────────────────────────────────────────────
+const GENDER_OPTS     = [{ id:'all',label:'All' },{ id:'male',label:'Male' },{ id:'female',label:'Female' },{ id:'nonbinary',label:'Non-binary' }]
+const ORIGIN_OPTS     = [{ id:'all',label:'All' },{ id:'earth',label:'From Earth' },{ id:'not-earth',label:'Not From Earth' },{ id:'alien',label:'Alien' },{ id:'asgardian',label:'Asgardian' },{ id:'mutant',label:'Mutant' },{ id:'enhanced',label:'Enhanced Human' },{ id:'android',label:'AI / Android' },{ id:'cosmic',label:'Cosmic Entity' }]
+const POWER_TYPE_OPTS = [{ id:'strength',label:'Strength' },{ id:'speed',label:'Speed' },{ id:'flight',label:'Flight' },{ id:'magic',label:'Magic' },{ id:'tech',label:'Tech' },{ id:'telepathy',label:'Telepathy' },{ id:'energy',label:'Energy' },{ id:'healing',label:'Healing' },{ id:'stealth',label:'Stealth' },{ id:'elemental',label:'Elemental' },{ id:'time-reality',label:'Time / Reality' },{ id:'martial-arts',label:'Martial Arts' },{ id:'weapons',label:'Weapons' }]
+const POWER_LEVEL_OPTS= [{ id:'all',label:'All' },{ id:'street',label:'Street Level' },{ id:'enhanced',label:'Enhanced' },{ id:'superhuman',label:'Superhuman' },{ id:'cosmic',label:'Cosmic' },{ id:'universal',label:'Universal' },{ id:'multiversal',label:'Multiversal' }]
+const STATUS_OPTS     = [{ id:'all',label:'All' },{ id:'hero',label:'Hero' },{ id:'villain',label:'Villain' },{ id:'anti-hero',label:'Anti-Hero' },{ id:'side',label:'Side Character' },{ id:'deceased',label:'Deceased' }]
+const TEAM_OPTS       = [{ id:'all',label:'All' },{ id:'avengers',label:'Avengers' },{ id:'xmen',label:'X-Men' },{ id:'guardians',label:'Guardians' },{ id:'defenders',label:'Defenders' },{ id:'shield',label:'S.H.I.E.L.D.' },{ id:'hydra',label:'HYDRA' },{ id:'asgard',label:'Asgard' },{ id:'wakanda',label:'Wakanda' },{ id:'eternals',label:'Eternals' },{ id:'spider-verse',label:'Spider-Verse' },{ id:'symbiotes',label:'Symbiotes' }]
+
+const BLANK_FILTERS = { gender:'all', origin:'all', powerTypes:[], powerLevel:'all', status:'all', team:'all' }
+
+function countActiveFilters(f) {
+  return (f.gender !== 'all' ? 1 : 0) +
+         (f.origin !== 'all' ? 1 : 0) +
+         (f.powerTypes.length > 0 ? 1 : 0) +
+         (f.powerLevel !== 'all' ? 1 : 0) +
+         (f.status !== 'all' ? 1 : 0) +
+         (f.team !== 'all' ? 1 : 0)
+}
+
+function applyAdvancedFilters(profiles, filters) {
+  const { gender, origin, powerTypes, powerLevel, status, team } = filters
+  return profiles.filter(p => {
+    const a = getCharAttrs(p)
+    if (gender !== 'all' && a.gender !== gender) return false
+    if (origin !== 'all') {
+      if (origin === 'not-earth') { if (a.origin === 'earth') return false }
+      else if (a.origin !== origin) return false
+    }
+    if (powerTypes.length > 0 && !powerTypes.some(pt => a.powerTypes.includes(pt))) return false
+    if (powerLevel !== 'all' && a.powerLevel !== powerLevel) return false
+    if (status !== 'all') {
+      if (status === 'deceased') { if (!a.deceased) return false }
+      else if (a.status !== status) return false
+    }
+    if (team !== 'all' && !a.teams.includes(team)) return false
+    return true
+  })
 }
 
 // Daily featured character — changes each day, picks from well-represented ones
@@ -497,13 +537,148 @@ function CharacterDetailPanel({ profile, isFav, onToggleFav, watchedIds, onOpenT
   )
 }
 
+// ── FilterChip ─────────────────────────────────────────────────────────────────
+function FilterChip({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all active:scale-95"
+      style={{
+        background: active ? '#E81C2E' : '#1a1a1a',
+        color:      active ? '#fff'    : '#555',
+        border:     active ? '1px solid transparent' : '1px solid #252525',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+function FilterSection({ title, children }) {
+  return (
+    <div className="mb-5">
+      <div className="text-[9px] uppercase tracking-[0.22em] font-bold mb-2.5" style={{ color: '#3a3a3a' }}>{title}</div>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  )
+}
+
+// ── FilterPanel (bottom-sheet) ─────────────────────────────────────────────────
+function FilterPanel({ filters, onFiltersChange, onClose }) {
+  const activeCount = countActiveFilters(filters)
+
+  function set(key, value) {
+    if (key === 'powerTypes') {
+      const curr = filters.powerTypes
+      const next = curr.includes(value) ? curr.filter(t => t !== value) : [...curr, value]
+      onFiltersChange({ ...filters, powerTypes: next })
+    } else {
+      const next = filters[key] === value && value !== 'all' ? 'all' : value
+      onFiltersChange({ ...filters, [key]: next })
+    }
+  }
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0"
+        style={{ zIndex: 10005, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(2px)' }}
+        onClick={onClose}
+      />
+      {/* Sheet */}
+      <div
+        className="fixed left-0 right-0 bottom-0 rounded-t-3xl flex flex-col"
+        style={{ zIndex: 10006, background: '#0e0e0e', maxHeight: '88vh', border: '1px solid #1e1e1e', borderBottom: 'none', animation: 'slideUp 0.25s cubic-bezier(0.32,0.72,0,1) both' }}
+      >
+        {/* Drag handle */}
+        <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full" style={{ background: '#2a2a2a' }} />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #1a1a1a' }}>
+          <div className="flex items-center gap-2.5">
+            <span className="font-bebas text-xl tracking-wider text-white">FILTERS</span>
+            {activeCount > 0 && (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg" style={{ background: '#E81C2E', color: '#fff' }}>
+                {activeCount}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {activeCount > 0 && (
+              <button
+                onClick={() => onFiltersChange(BLANK_FILTERS)}
+                className="text-[12px] font-bold active:scale-95 transition-all"
+                style={{ color: '#E81C2E' }}
+              >
+                Clear All
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+              style={{ background: '#1a1a1a', color: '#888' }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable sections */}
+        <div className="overflow-y-auto px-5 pt-5 pb-12 flex-1">
+          <FilterSection title="Gender">
+            {GENDER_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={o.id !== 'all' && filters.gender === o.id} onClick={() => set('gender', o.id)} />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Origin">
+            {ORIGIN_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={o.id !== 'all' && filters.origin === o.id} onClick={() => set('origin', o.id)} />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Power Type  (any match)">
+            {POWER_TYPE_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={filters.powerTypes.includes(o.id)} onClick={() => set('powerTypes', o.id)} />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Power Level">
+            {POWER_LEVEL_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={o.id !== 'all' && filters.powerLevel === o.id} onClick={() => set('powerLevel', o.id)} />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Status">
+            {STATUS_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={o.id !== 'all' && filters.status === o.id} onClick={() => set('status', o.id)} />
+            ))}
+          </FilterSection>
+
+          <FilterSection title="Team">
+            {TEAM_OPTS.map(o => (
+              <FilterChip key={o.id} label={o.label} active={o.id !== 'all' && filters.team === o.id} onClick={() => set('team', o.id)} />
+            ))}
+          </FilterSection>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ── Main export ────────────────────────────────────────────────────────────────
 export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), initialFocus = null, onClearFocus }) {
-  const [search,    setSearch]    = useState('')
-  const [activeTab, setActiveTab] = useState('all')
-  const [favorites, setFavorites] = useState(() => loadFavs())
-  const [selected,  setSelected]  = useState(null)
+  const [search,     setSearch]     = useState('')
+  const [activeTab,  setActiveTab]  = useState('all')
+  const [favorites,  setFavorites]  = useState(() => loadFavs())
+  const [selected,   setSelected]   = useState(null)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filters,    setFilters]    = useState(BLANK_FILTERS)
   const tabsRef = useRef(null)
+  const activeFilterCount = useMemo(() => countActiveFilters(filters), [filters])
 
   const featuredProfile = useMemo(() => getDailyFeatured(), [])
 
@@ -526,8 +701,9 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
 
   // Filter + search
   const filtered = useMemo(() => {
-    const base = applyFilter(CHARACTER_PROFILES, activeTab)
-    const q    = search.toLowerCase().trim()
+    let base = applyFilter(CHARACTER_PROFILES, activeTab)
+    base = applyAdvancedFilters(base, filters)
+    const q = search.toLowerCase().trim()
     if (!q) return base
     return base.filter(p =>
       p.name.toLowerCase().includes(q) ||
@@ -535,7 +711,7 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
       p.actor?.toLowerCase().includes(q) ||
       p.powers.some(pw => pw.toLowerCase().includes(q))
     )
-  }, [search, activeTab])
+  }, [search, activeTab, filters])
 
   // Favorites float to top
   const sorted = useMemo(() => {
@@ -567,31 +743,56 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
           The complete Marvel universe encyclopedia
         </p>
 
-        {/* Search bar */}
-        <div className="relative">
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-            style={{ color: '#3a3a3a' }}
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
-          </svg>
-          <input
-            type="search"
-            placeholder="Search heroes, villains, actors, powers…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full rounded-2xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#2e2e2e] focus:outline-none transition-colors"
-            style={{ background: '#111', border: '1.5px solid #1e1e1e' }}
-          />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#444] hover:text-white text-xl leading-none"
+        {/* Search + Filter row */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+              style={{ color: '#3a3a3a' }}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
             >
-              ×
-            </button>
-          )}
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/>
+            </svg>
+            <input
+              type="search"
+              placeholder="Search heroes, villains, actors, powers…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full rounded-2xl pl-10 pr-10 py-3 text-sm text-white placeholder-[#2e2e2e] focus:outline-none transition-colors"
+              style={{ background: '#111', border: '1.5px solid #1e1e1e' }}
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#444] hover:text-white text-xl leading-none"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* Filter button */}
+          <button
+            onClick={() => setFilterOpen(true)}
+            className="relative flex-shrink-0 flex items-center gap-1.5 px-3.5 rounded-2xl transition-all active:scale-95"
+            style={{
+              background: activeFilterCount > 0 ? '#E81C2E12' : '#111',
+              border:     `1.5px solid ${activeFilterCount > 0 ? '#E81C2E40' : '#1e1e1e'}`,
+              color:      activeFilterCount > 0 ? '#E81C2E' : '#555',
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 12h10M11 20h2"/>
+            </svg>
+            {activeFilterCount > 0 && (
+              <span
+                className="w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold"
+                style={{ background: '#E81C2E', color: '#fff' }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -663,6 +864,15 @@ export default function CharactersPage({ onOpenTitle, watchedIds = new Set(), in
           </div>
         )}
       </div>
+
+      {/* ── FILTER PANEL ── */}
+      {filterOpen && (
+        <FilterPanel
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
 
       {/* ── DETAIL PANEL ── */}
       {selectedProfile && (
