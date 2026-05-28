@@ -6,6 +6,8 @@ import {
   getRuntimeMinutes,
 } from './data/titles.js'
 import { calcStreak, calcLongestStreak } from './data/achievements.js'
+import { CHARACTER_TITLES } from './data/characters.js'
+import { CHARACTER_PROFILE_MAP } from './data/characterProfiles.js'
 
 const ENDGAME_RUNTIME = 182 // minutes (Avengers: Endgame)
 const PACE_START      = new Date('2025-08-27T00:00:00')
@@ -18,7 +20,47 @@ const ERAS = [
   { key: 'multiverse', label: 'Multiverse Saga',  ids: IDS_MULTIVERSE_SAGA, color: '#F5C518' },
 ]
 
+// IMDb ratings (out of 10) for notable titles
+const IMDB_RATINGS = {
+  1:7.1, 2:6.7, 3:5.9,                                          // Blade
+  5:7.7, 6:6.6, 7:7.4, 8:7.5, 9:6.8, 10:6.7, 11:8.0, 12:7.0, // X-Men
+  13:5.7, 14:8.0, 15:7.7, 16:8.1,                              // Dark Phoenix / Deadpool / Logan
+  17:6.9, 20:6.8, 21:7.9, 22:7.0, 23:6.7, 24:7.0, 25:8.0,    // Cap 1, CM, IM1-3, Hulk, Thor, Avengers
+  26:7.1, 27:6.8, 28:7.7, 30:8.0, 31:7.6, 32:7.3, 33:7.3,    // IM3, Thor2, CW, GotG1-2, AoU, Ant-Man
+  40:7.8, 41:6.7, 42:7.3, 43:7.4, 44:7.5, 45:7.9, 46:7.0,    // Civil War, BW, BP1, SM:HC, DS1, Ragnarok, A&tW
+  47:8.4, 48:8.4, 49:8.2, 50:7.9, 51:7.2, 52:7.5,             // IW, EG, Loki, WandaVision, FATWS, Hawkeye
+  54:7.4, 55:6.3, 56:7.3, 57:8.2, 58:6.9,                     // Shang-Chi, Eternals, SM:FFH, SM:NWH, DS2
+  62:6.3, 63:6.7, 66:6.3, 67:7.9, 69:5.8, 70:7.7,             // Thor L&T, BP2, Quantumania, GotG3, Marvels, D&W
+  73:6.6, 74:6.5, 77:6.0,                                       // Venom1, Venom2, Cap:BNW
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+// SVG donut chart — segments: [{ pct, color, label }]
+function DonutChart({ segments, size = 110 }) {
+  const cx = size / 2, cy = size / 2, r = size * 0.34, sw = size * 0.16
+  const circ = 2 * Math.PI * r
+  let deg = -90 // start at 12 o'clock
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1a1a1a" strokeWidth={sw} />
+      {segments.map((s, i) => {
+        if (s.pct <= 0) return null
+        const len = (s.pct / 100) * circ
+        const el = (
+          <circle key={i} cx={cx} cy={cy} r={r} fill="none"
+            stroke={s.color} strokeWidth={sw}
+            strokeDasharray={`${len} ${circ - len}`}
+            strokeDashoffset={0}
+            transform={`rotate(${deg}, ${cx}, ${cy})`}
+          />
+        )
+        deg += (s.pct / 100) * 360
+        return el
+      })}
+    </svg>
+  )
+}
 
 function EraBar({ label, total, watchedCount, color }) {
   const pct = total > 0 ? Math.round((watchedCount / total) * 100) : 0
@@ -704,7 +746,7 @@ export default function StatsPage({
     listTitles.filter(t => ratings[t.id] != null && watched.has(t.id))
   , [listTitles, ratings, watched])
   const topRated = useMemo(() =>
-    [...ratedTitles].sort((a, b) => (ratings[b.id] || 0) - (ratings[a.id] || 0)).slice(0, 3)
+    [...ratedTitles].sort((a, b) => (ratings[b.id] || 0) - (ratings[a.id] || 0)).slice(0, 5)
   , [ratedTitles, ratings])
   const bottomRated = useMemo(() =>
     [...ratedTitles]
@@ -712,6 +754,72 @@ export default function StatsPage({
       .filter(t => (ratings[t.id] || 5) <= 2)
       .slice(0, 3)
   , [ratedTitles, ratings])
+
+  // ── New stats ────────────────────────────────────────────────────────────────
+
+  // Average rating
+  const avgRating = useMemo(() => {
+    if (!ratedTitles.length) return null
+    const sum = ratedTitles.reduce((s, t) => s + (ratings[t.id] || 0), 0)
+    return (sum / ratedTitles.length).toFixed(1)
+  }, [ratedTitles, ratings])
+
+  // Best watch day of week
+  const bestWatchDay = useMemo(() => {
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const counts = Array(7).fill(0)
+    for (const [dateStr, ids] of Object.entries(watchHistory || {})) {
+      const dow = new Date(dateStr + 'T12:00').getDay()
+      counts[dow] += (ids?.length ?? 0)
+    }
+    const total = counts.reduce((a, b) => a + b, 0)
+    if (!total) return null
+    const maxCount = Math.max(...counts)
+    const maxDow = counts.indexOf(maxCount)
+    return { day: DAYS[maxDow], count: maxCount, counts, days: DAYS, total }
+  }, [watchHistory])
+
+  // Favorite character — most appearances in watched titles
+  const favoriteChar = useMemo(() => {
+    if (!watched.size) return null
+    let bestKey = null, bestCount = 0
+    for (const [charKey, titleIds] of Object.entries(CHARACTER_TITLES)) {
+      const count = titleIds.filter(id => watched.has(id)).length
+      if (count > bestCount) { bestCount = count; bestKey = charKey }
+    }
+    if (!bestKey || bestCount < 2) return null
+    const profile = CHARACTER_PROFILE_MAP[bestKey]
+    return profile ? { ...profile, watchedCount: bestCount } : null
+  }, [watched])
+
+  // IMDb vs user average comparison
+  const imdbComparison = useMemo(() => {
+    const matched = ratedTitles.filter(t => IMDB_RATINGS[t.id] != null)
+    if (matched.length < 3) return null
+    const userAvg = matched.reduce((s, t) => s + ratings[t.id], 0) / matched.length
+    const imdbAvg = matched.reduce((s, t) => s + IMDB_RATINGS[t.id] / 2, 0) / matched.length
+    return { userAvg: userAvg.toFixed(1), imdbAvg: imdbAvg.toFixed(1), count: matched.length }
+  }, [ratedTitles, ratings])
+
+  // Completion prediction based on watch pace
+  const completionPrediction = useMemo(() => {
+    const entries = Object.entries(watchHistory || {}).filter(([, ids]) => ids?.length)
+    if (entries.length < 3 || !totalWatched) return null
+    const sorted = entries.sort((a, b) => a[0].localeCompare(b[0]))
+    const firstDate = new Date(sorted[0][0] + 'T12:00')
+    const daysSinceStart = Math.max(1, (Date.now() - firstDate.getTime()) / 86400000)
+    const dailyPace = totalWatched / daysSinceStart
+    const remaining = totalAvail - totalWatched
+    if (remaining <= 0) return { done: true }
+    const daysToFinish = Math.ceil(remaining / dailyPace)
+    const finishDate = new Date(Date.now() + daysToFinish * 86400000)
+    return {
+      done: false,
+      pacePerWeek: (dailyPace * 7).toFixed(1),
+      daysToFinish,
+      finishDate: finishDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    }
+  }, [watchHistory, totalWatched, totalAvail])
 
   // ── Weekly goal ──
   const thisWeekStart = useMemo(() => {
@@ -853,6 +961,47 @@ export default function StatsPage({
           </div>
         </div>
 
+        {/* ── Movies vs TV Donut ── */}
+        {totalWatched > 0 && (
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-3">Movies vs TV</div>
+            <div className="flex items-center gap-5">
+              <DonutChart segments={[
+                { pct: totalMinutes > 0 ? Math.round(byType.movie.mins / totalMinutes * 100)    : 0, color: '#E81C2E' },
+                { pct: totalMinutes > 0 ? Math.round(byType.tv.mins / totalMinutes * 100)       : 0, color: '#60a5fa' },
+                { pct: totalMinutes > 0 ? Math.round(byType.animated.mins / totalMinutes * 100) : 0, color: '#a78bfa' },
+              ]} />
+              <div className="flex-1 space-y-2.5">
+                {[
+                  { label: 'Movies',   key: 'movie',    color: '#E81C2E' },
+                  { label: 'TV',       key: 'tv',       color: '#60a5fa' },
+                  { label: 'Animated', key: 'animated', color: '#a78bfa' },
+                ].map(({ label, key, color }) => {
+                  const { count } = byType[key]
+                  const pct = totalWatched > 0 ? Math.round(count / totalWatched * 100) : 0
+                  return (
+                    <div key={key}>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+                          <span className="text-[11px] text-[#888]">{label}</span>
+                        </div>
+                        <span className="text-[11px] font-mono" style={{ color }}>
+                          {count} ({pct}%)
+                        </span>
+                      </div>
+                      <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700"
+                          style={{ width: `${pct}%`, background: color }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Streaks + binge ── */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
@@ -876,6 +1025,41 @@ export default function StatsPage({
             </div>
           )}
         </div>
+
+        {/* ── Best Watch Day ── */}
+        {bestWatchDay && (
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[10px] text-[#555] uppercase tracking-widest">Best Watch Day</div>
+              <span
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg"
+                style={{ background: '#F5C51815', color: '#F5C518', border: '1px solid #F5C51830' }}
+              >
+                {bestWatchDay.day} 🏆
+              </span>
+            </div>
+            <div className="flex items-end gap-1 h-14">
+              {bestWatchDay.counts.map((c, i) => {
+                const isMax = bestWatchDay.counts[i] === Math.max(...bestWatchDay.counts)
+                const pct = bestWatchDay.total > 0 ? c / Math.max(...bestWatchDay.counts) : 0
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <div
+                      className="w-full rounded-t-sm transition-all duration-700"
+                      style={{
+                        height: `${Math.max(3, pct * 44)}px`,
+                        background: isMax ? '#F5C518' : '#2a2a2a',
+                      }}
+                    />
+                    <span className="text-[8px]" style={{ color: isMax ? '#F5C518' : '#444' }}>
+                      {bestWatchDay.days[i]}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Weekly Goal ── */}
         <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
@@ -905,7 +1089,16 @@ export default function StatsPage({
 
         {/* ── Era Completion ── */}
         <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
-          <div className="text-[10px] text-[#555] uppercase tracking-widest mb-4">Era Completion</div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-[10px] text-[#555] uppercase tracking-widest">Era Completion</div>
+            {bestEra && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl"
+                style={{ background: '#E81C2E15', border: '1px solid #E81C2E30' }}>
+                <span className="text-[9px]">🏆</span>
+                <span className="text-[10px] font-bold text-[#E81C2E]">Most Watched: {bestEra}</span>
+              </div>
+            )}
+          </div>
           {eraStats.map(e => (
             <EraBar key={e.key} label={e.label} total={e.total} watchedCount={e.watchedCount} color={e.color} />
           ))}
@@ -976,20 +1169,43 @@ export default function StatsPage({
         {/* ── Ratings ── */}
         {ratedTitles.length > 0 && (
           <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
-            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-3">Your Ratings</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[10px] text-[#555] uppercase tracking-widest">Your Ratings</div>
+              {avgRating && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-[#555]">Avg</span>
+                  <span className="text-[13px] font-bold text-[#F5C518]">{avgRating}</span>
+                  <span className="text-[10px] text-[#F5C518]">★</span>
+                  <span className="text-[10px] text-[#444]">/ 5</span>
+                </div>
+              )}
+            </div>
+
+            {/* Top 5 rated */}
             {topRated.length > 0 && (
-              <>
+              <div className="mb-3">
                 <div className="text-[9px] text-[#F5C518] uppercase tracking-widest mb-2">⭐ Top Rated</div>
-                {topRated.map(t => (
-                  <div key={t.id} className="flex items-center justify-between py-1.5 border-b border-[#161616] last:border-0">
-                    <span className="text-[12px] text-white truncate flex-1 mr-3">{t.title}</span>
-                    <Stars count={ratings[t.id]} />
+                {topRated.map((t, i) => (
+                  <div key={t.id}
+                    className="flex items-center gap-3 py-2 rounded-xl px-2 -mx-2 mb-1 last:mb-0"
+                    style={{ background: i === 0 ? '#F5C51808' : 'transparent' }}
+                  >
+                    <span className="text-[11px] font-bold w-4 shrink-0 text-center"
+                      style={{ color: i === 0 ? '#F5C518' : '#333' }}>
+                      {i + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] text-white truncate font-medium">{t.title}</p>
+                      <p className="text-[9px] text-[#444] capitalize">{t.type}</p>
+                    </div>
+                    <Stars count={ratings[t.id]} size={i === 0 ? 'text-base' : 'text-sm'} />
                   </div>
                 ))}
-              </>
+              </div>
             )}
+
             {bottomRated.length > 0 && (
-              <div className="mt-3">
+              <div>
                 <div className="text-[9px] text-[#555] uppercase tracking-widest mb-2">👎 Lowest Rated</div>
                 {bottomRated.map(t => (
                   <div key={t.id} className="flex items-center justify-between py-1.5 border-b border-[#161616] last:border-0">
@@ -997,6 +1213,153 @@ export default function StatsPage({
                     <Stars count={ratings[t.id]} color="#555" />
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── IMDb vs Your Rating ── */}
+        {imdbComparison && (
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">IMDb vs Your Rating</div>
+            <div className="text-[9px] text-[#333] mb-3">Based on {imdbComparison.count} titles you've rated</div>
+            {[
+              { label: 'Your Average', value: Number(imdbComparison.userAvg), color: '#F5C518' },
+              { label: 'IMDb Average', value: Number(imdbComparison.imdbAvg), color: '#60a5fa' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="mb-3 last:mb-0">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[11px] text-[#888]">{label}</span>
+                  <span className="text-[13px] font-bold font-mono" style={{ color }}>
+                    {value.toFixed(1)}<span className="text-[10px] text-[#444]">/5</span>
+                  </span>
+                </div>
+                <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${(value / 5) * 100}%`, background: color }} />
+                </div>
+              </div>
+            ))}
+            <div className="mt-3 text-center text-[10px]"
+              style={{ color: Number(imdbComparison.userAvg) > Number(imdbComparison.imdbAvg) ? '#4ade80' : '#f87171' }}>
+              {Number(imdbComparison.userAvg) > Number(imdbComparison.imdbAvg)
+                ? `You rate ${(Number(imdbComparison.userAvg) - Number(imdbComparison.imdbAvg)).toFixed(1)}★ higher than IMDb consensus`
+                : Number(imdbComparison.userAvg) < Number(imdbComparison.imdbAvg)
+                ? `You rate ${(Number(imdbComparison.imdbAvg) - Number(imdbComparison.userAvg)).toFixed(1)}★ lower than IMDb consensus`
+                : 'Your ratings perfectly match IMDb consensus'}
+            </div>
+          </div>
+        )}
+
+        {/* ── Favorite Character ── */}
+        {favoriteChar && (
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-3">Favorite Character</div>
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+                style={{
+                  background: `radial-gradient(ellipse at center, ${favoriteChar.bg ?? '#111'} 0%, #0a0a0a 100%)`,
+                  border: `1.5px solid ${favoriteChar.color ?? '#333'}30`,
+                  boxShadow: `0 0 20px ${favoriteChar.color ?? '#333'}20`,
+                  filter: `drop-shadow(0 0 8px ${favoriteChar.color ?? '#333'}40)`,
+                }}
+              >
+                {favoriteChar.symbol ?? '🦸'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-bebas text-2xl tracking-widest leading-tight text-white">
+                  {favoriteChar.alias}
+                </div>
+                <div className="text-[11px] text-[#555] mb-1">{favoriteChar.name}</div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wide"
+                    style={{
+                      background: favoriteChar.affiliation === 'villain' ? '#E81C2E15' : '#F5C51815',
+                      color:      favoriteChar.affiliation === 'villain' ? '#E81C2E'   : '#F5C518',
+                    }}
+                  >
+                    {favoriteChar.affiliation}
+                  </span>
+                  <span className="text-[10px] text-[#444]">
+                    in {favoriteChar.watchedCount} of your watched titles
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Watch Time vs Average ── */}
+        {totalHours > 0 && (
+          <div className="rounded-2xl border border-[#1e1e1e] p-4 bg-[#0f0f0f]">
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-1">Watch Time Comparison</div>
+            <div className="text-[9px] text-[#333] mb-3">Your hours vs estimated app average</div>
+            {[
+              { label: 'You',          value: totalHours, color: '#E81C2E' },
+              { label: 'App Average',  value: 62,         color: '#555' },
+              { label: 'Completionist',value: Math.floor(listTitles.reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60), color: '#F5C518' },
+            ].map(({ label, value, color }) => {
+              const maxHours = Math.floor(listTitles.reduce((s, t) => s + getRuntimeMinutes(t), 0) / 60)
+              return (
+                <div key={label} className="mb-3 last:mb-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px]" style={{ color: label === 'You' ? '#ccc' : '#555' }}>{label}</span>
+                    <span className="text-[11px] font-mono" style={{ color }}>{value}h</span>
+                  </div>
+                  <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, (value / maxHours) * 100)}%`, background: color }} />
+                  </div>
+                </div>
+              )
+            })}
+            <div className="mt-2 text-[9px] text-[#333] text-center">
+              Friends comparison available when social features launch
+            </div>
+          </div>
+        )}
+
+        {/* ── Completion Prediction ── */}
+        {completionPrediction && (
+          <div
+            className="rounded-2xl border p-4"
+            style={{
+              background: 'linear-gradient(135deg, #080012 0%, #0f0f0f 100%)',
+              borderColor: completionPrediction.done ? '#F5C51830' : '#a78bfa30',
+            }}
+          >
+            <div className="text-[10px] text-[#555] uppercase tracking-widest mb-2">Completion Prediction</div>
+            {completionPrediction.done ? (
+              <div className="text-center py-2">
+                <div className="text-4xl mb-2">🏆</div>
+                <div className="font-bebas text-2xl tracking-widest text-[#F5C518]">YOU DID IT!</div>
+                <div className="text-[12px] text-[#888] mt-1">100% complete — true Marvel champion</div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                <div>
+                  <div className="font-bebas text-4xl leading-none" style={{ color: '#a78bfa' }}>
+                    {completionPrediction.finishDate.split(',')[0].split(' ')[1]}
+                  </div>
+                  <div className="font-bebas text-lg leading-none text-white/60">
+                    {completionPrediction.finishDate.split(' ')[0]}
+                  </div>
+                  <div className="font-bebas text-sm leading-none text-white/30">
+                    {completionPrediction.finishDate.split(',')[1]?.trim()}
+                  </div>
+                </div>
+                <div className="flex-1 space-y-1.5">
+                  <div className="text-[11px] text-[#888]">Estimated finish date</div>
+                  <div className="text-[11px] text-[#555]">
+                    at your pace of <span className="text-[#a78bfa] font-semibold">{completionPrediction.pacePerWeek} titles/week</span>
+                  </div>
+                  <div className="text-[11px] text-[#555]">
+                    <span className="text-white/40">{totalAvail - totalWatched}</span> titles remaining
+                    · <span className="text-white/40">{completionPrediction.daysToFinish}</span> days to go
+                  </div>
+                </div>
               </div>
             )}
           </div>
