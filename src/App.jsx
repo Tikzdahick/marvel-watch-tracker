@@ -1037,7 +1037,7 @@ export default function App() {
   // ── Check achievements ──
   const runAchievementCheck = useCallback((newWatched, newHistory) => {
     setAchievements(prev => {
-      const ctx = { watched: newWatched, watchHistory: newHistory, loginDates, listSize: config.listSize }
+      const ctx = { watched: newWatched, watchHistory: newHistory, loginDates, listSize: config.listSize, ratings, xp, achievements: prev }
       const newIds = checkAchievements(prev, ctx)
       if (!newIds.length) return prev
       const next = { ...prev }
@@ -1046,12 +1046,12 @@ export default function App() {
       setToastQueue(q => [...q, ...newIds])
       return next
     })
-  }, [loginDates, config.listSize])
+  }, [loginDates, config.listSize, ratings, xp])
 
   // Check login-based achievements on mount
   useEffect(() => {
     setAchievements(prev => {
-      const ctx = { watched, watchHistory, loginDates, listSize: config.listSize }
+      const ctx = { watched, watchHistory, loginDates, listSize: config.listSize, ratings, xp, achievements: prev }
       const newIds = checkAchievements(prev, ctx)
       if (!newIds.length) return prev
       const next = { ...prev }
@@ -1149,6 +1149,17 @@ export default function App() {
     earnXP(XP_EVENTS?.WATCH ?? 50)
     setInProgress(prev => { const n = { ...prev }; delete n[id]; return n })
     setTimeout(() => setShowTierPrompt(id), 300)
+
+    // Night Owl: marked as watched after midnight
+    const h = new Date().getHours()
+    if (h >= 0 && h < 6) {
+      setAchievements(prev => {
+        if (prev['special-nightowl']?.unlocked) return prev
+        const next = { ...prev, 'special-nightowl': { unlocked: true, unlockedAt: new Date().toISOString() } }
+        setToastQueue(q => [...q, 'special-nightowl'])
+        return next
+      })
+    }
   }, [runAchievementCheck, soundsEnabled])
 
   // ── Update watch date for an already-watched title ──

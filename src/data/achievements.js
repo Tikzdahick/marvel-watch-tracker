@@ -2,6 +2,8 @@ import {
   TITLES,
   IDS_XMEN_ERA, IDS_DEFENDERS_SAGA, IDS_INFINITY_SAGA,
   IDS_MULTIVERSE_SAGA, IDS_SPIDERMAN, IDS_BLACK_PANTHER, IDS_THOR,
+  IDS_CAP_AMERICA, IDS_DOCTOR_STRANGE, IDS_GUARDIANS, IDS_ANT_MAN,
+  IDS_IRON_MAN, IDS_HULK, IDS_AVENGERS,
 } from './titles.js'
 
 // ── Streak utilities ──────────────────────────────────────────────────────────
@@ -296,6 +298,260 @@ export const ACHIEVEMENTS = [
     // checked in App on login
     check: () => false,
   },
+
+  // ── Hero-Specific Completions ────────────────────────────────────────────
+  {
+    id: 'hero-asgardian',
+    name: 'Asgardian',
+    desc: 'Watch all four Thor movies',
+    icon: '⚡',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_THOR, watched),
+  },
+  {
+    id: 'hero-spider',
+    name: 'Friendly Neighborhood',
+    desc: 'Watch all MCU Spider-Man movies',
+    icon: '🕷',
+    category: 'hero',
+    check: ({ watched }) => [43,56,57].every(id => watched.has(id)),
+  },
+  {
+    id: 'hero-wakanda',
+    name: 'Wakanda Forever',
+    desc: 'Watch all Black Panther movies',
+    icon: '🖐',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_BLACK_PANTHER, watched),
+  },
+  {
+    id: 'hero-sorcerer',
+    name: 'Sorcerer Supreme',
+    desc: 'Watch all Doctor Strange movies',
+    icon: '🔮',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_DOCTOR_STRANGE, watched),
+  },
+  {
+    id: 'hero-guardians',
+    name: 'Guardians Assemble',
+    desc: 'Watch all Guardians of the Galaxy movies',
+    icon: '🌌',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_GUARDIANS, watched),
+  },
+  {
+    id: 'hero-antman',
+    name: 'Ant-Sized',
+    desc: 'Watch all Ant-Man movies',
+    icon: '🐜',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_ANT_MAN, watched),
+  },
+  {
+    id: 'hero-captain',
+    name: 'Super Soldier',
+    desc: 'Watch all Captain America movies',
+    icon: '🛡',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_CAP_AMERICA, watched),
+  },
+  {
+    id: 'hero-ironman',
+    name: 'Genius Billionaire',
+    desc: 'Watch all Iron Man movies',
+    icon: '🤖',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_IRON_MAN, watched),
+  },
+  {
+    id: 'hero-hulk',
+    name: 'Strongest Avenger',
+    desc: 'Watch The Incredible Hulk',
+    icon: '💚',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_HULK, watched),
+  },
+  {
+    id: 'hero-avengers',
+    name: "Earth's Mightiest",
+    desc: 'Watch all four Avengers movies',
+    icon: '🦸',
+    category: 'hero',
+    check: ({ watched }) => allWatched(IDS_AVENGERS, watched),
+  },
+
+  // ── Rating Achievements ──────────────────────────────────────────────────
+  {
+    id: 'rating-harsh',
+    name: 'Harsh Critic',
+    desc: 'Rate 5 titles just 1 star',
+    icon: '⭐',
+    category: 'rating',
+    check: ({ ratings = {} }) => Object.values(ratings).filter(r => r === 1).length >= 5,
+  },
+  {
+    id: 'rating-fan',
+    name: 'True Fan',
+    desc: 'Rate 25 titles',
+    icon: '🌟',
+    category: 'rating',
+    check: ({ ratings = {} }) => Object.values(ratings).length >= 25,
+  },
+  {
+    id: 'rating-movies',
+    name: 'Movie Buff',
+    desc: 'Rate every movie on your list',
+    icon: '🎬',
+    category: 'rating',
+    check: ({ ratings = {}, watched }) => {
+      const movies = TITLES.filter(t => t.type === 'movie' && watched.has(t.id))
+      return movies.length > 0 && movies.every(t => ratings[t.id] != null)
+    },
+  },
+  {
+    id: 'rating-expert',
+    name: 'Certified Marvel Expert',
+    desc: 'Rate every single title you have watched',
+    icon: '🏅',
+    category: 'rating',
+    check: ({ ratings = {}, watched }) =>
+      watched.size > 0 && [...watched].every(id => ratings[id] != null),
+  },
+
+  // ── Character Achievements ───────────────────────────────────────────────
+  {
+    id: 'char-stan',
+    name: 'Stan Lee Fan',
+    desc: 'Find all Stan Lee cameos',
+    icon: '👴',
+    category: 'character',
+    secret: true,
+    check: () => false, // manually triggered
+  },
+  {
+    id: 'char-postcredits',
+    name: 'Post Credits Addict',
+    desc: 'Watch all post-credit scenes',
+    icon: '📽',
+    category: 'character',
+    secret: true,
+    check: () => false, // manually triggered
+  },
+  {
+    id: 'char-snap',
+    name: 'Snap Survivor',
+    desc: 'Track all snap survivors',
+    icon: '🫰',
+    category: 'character',
+    secret: true,
+    check: () => false, // manually triggered
+  },
+  {
+    id: 'char-stones',
+    name: 'Stone Collector',
+    desc: 'Mark all 6 Infinity Stones as seen',
+    icon: '💎',
+    category: 'character',
+    secret: true,
+    check: () => false, // manually triggered
+  },
+
+  // ── Social Achievements ──────────────────────────────────────────────────
+  {
+    id: 'social-watchparty',
+    name: 'Watch Party Host',
+    desc: 'Host your first watch party',
+    icon: '🍿',
+    category: 'social',
+    check: () => false, // requires social feature
+  },
+  {
+    id: 'social-squad',
+    name: 'Squad Goals',
+    desc: 'Have 5 friends on the app',
+    icon: '👥',
+    category: 'social',
+    check: () => false, // requires social feature
+  },
+  {
+    id: 'social-debate',
+    name: 'Debate Champion',
+    desc: 'Win 10 daily debates',
+    icon: '🗣',
+    category: 'social',
+    check: () => false, // requires social feature
+  },
+
+  // ── Special Achievements ─────────────────────────────────────────────────
+  {
+    id: 'special-nightowl',
+    name: 'Night Owl',
+    desc: 'Mark a title as watched after midnight',
+    icon: '🦉',
+    category: 'special',
+    // checked in App on watch toggle
+    check: () => false,
+  },
+  {
+    id: 'special-weekend',
+    name: 'Weekend Warrior',
+    desc: 'Watch 10 titles across a single weekend',
+    icon: '🛋',
+    category: 'special',
+    check: ({ watchHistory }) => {
+      for (const [dateStr, ids] of Object.entries(watchHistory)) {
+        const d = new Date(dateStr)
+        if (d.getDay() === 6) { // Saturday
+          const sunStr = new Date(d.getTime() + 86400000).toISOString().slice(0, 10)
+          if ((ids?.length ?? 0) + (watchHistory[sunStr]?.length ?? 0) >= 10) return true
+        }
+      }
+      return false
+    },
+  },
+  {
+    id: 'special-phasemaster',
+    name: 'Phase Master',
+    desc: 'Complete every MCU phase — watch the full Infinity and Multiverse sagas',
+    icon: '🌀',
+    category: 'special',
+    check: ({ watched }) =>
+      allWatched(IDS_INFINITY_SAGA, watched) && allWatched(IDS_MULTIVERSE_SAGA, watched),
+  },
+  {
+    id: 'special-completionist',
+    name: 'True Completionist',
+    desc: 'Unlock every other achievement',
+    icon: '🏆',
+    category: 'special',
+    check: ({ achievements = {} }) =>
+      ACHIEVEMENTS.filter(a => a.id !== 'special-completionist').every(a => achievements[a.id]?.unlocked),
+  },
+  {
+    id: 'special-multiverse',
+    name: 'Multiverse Explorer',
+    desc: 'Switch between the Marvel and DC tracker 10 times',
+    icon: '🌐',
+    category: 'special',
+    check: () => false, // checked in App on universe switch
+  },
+  {
+    id: 'special-ogfan',
+    name: 'OG Fan',
+    desc: 'Log in on 100 different days total',
+    icon: '📆',
+    category: 'special',
+    check: ({ loginDates }) => new Set(loginDates).size >= 100,
+  },
+  {
+    id: 'special-legendary',
+    name: 'Legendary',
+    desc: 'Reach the highest S.H.I.E.L.D. rank — Iron Man Level',
+    icon: '🦾',
+    category: 'special',
+    check: ({ xp = 0 }) => xp >= 15000,
+  },
 ]
 
 export const ACHIEVEMENT_MAP = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]))
@@ -307,6 +563,11 @@ export const CATEGORY_LABELS = {
   saga:      '⚡ Saga Completions',
   type:      '🎭 Type Completions',
   speed:     '🚀 Speed & Binge',
+  hero:      '🦸 Hero-Specific',
+  rating:    '⭐ Rating Achievements',
+  character: '🎭 Character Achievements',
+  social:    '👥 Social Achievements',
+  special:   '✨ Special Achievements',
   secret:    '🔮 Secret Achievements',
 }
 
