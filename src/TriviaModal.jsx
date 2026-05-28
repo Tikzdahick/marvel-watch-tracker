@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { getRank } from './data/triviaRanks.js'
 
 function getRankIcon(points) { return getRank(points).icon }
@@ -29,11 +29,53 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
   const alreadyAnswered = triviaState.answers?.[dateStr] !== undefined
   const answeredCorrect = triviaState.answers?.[dateStr] === true
 
-  const [selected,      setSelected]      = useState(null)   // index of chosen answer
+  const [selected,      setSelected]      = useState(null)
   const [locked,        setLocked]        = useState(false)
   const [feedback,      setFeedback]      = useState(null)   // 'correct' | 'wrong'
   const [revealed,      setRevealed]      = useState(false)
   const [pointsPreview, setPointsPreview] = useState(null)
+  const [timeLeft,      setTimeLeft]      = useState(5)
+  const timerRef   = useRef(null)
+  const startTimeRef = useRef(null)
+
+  // ── Timer ──
+  useEffect(() => {
+    if (alreadyAnswered || locked) return
+    setTimeLeft(5)
+    startTimeRef.current = Date.now()
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 0.15) {
+          clearInterval(timerRef.current)
+          return 0
+        }
+        return t - 0.1
+      })
+    }, 100)
+    return () => clearInterval(timerRef.current)
+  }, [alreadyAnswered]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-submit when timer hits 0
+  useEffect(() => {
+    if (!locked && timeLeft === 0) {
+      clearInterval(timerRef.current)
+      setSelected(-1)
+      setLocked(true)
+      setFeedback('wrong')
+      setRevealed(true)
+      setTimeout(() => onAnswer(false, { titleId: question.titleId, speedMultiplier: 1 }), 1800)
+    }
+  }, [timeLeft]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function getSpeedMultiplier() {
+    const elapsed = Date.now() - (startTimeRef.current ?? Date.now())
+    if (elapsed < 2000) return 3
+    if (elapsed < 3000) return 2
+    return 1
+  }
+
+  const timerPct = (timeLeft / 5) * 100
+  const timerColor = timeLeft > 3 ? '#4ade80' : timeLeft > 2 ? '#F5C518' : '#E81C2E'
 
   // Format the date nicely: "Thursday, May 15"
   function formatDate(str) {
@@ -44,12 +86,13 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
 
   function handleAnswer(idx) {
     if (locked) return
+    clearInterval(timerRef.current)
+    const multiplier = getSpeedMultiplier()
     setSelected(idx)
     setLocked(true)
     const correct = idx === question.correctIndex
     setFeedback(correct ? 'correct' : 'wrong')
     setRevealed(true)
-    // Compute preview points for display (10 base + streak bonus + daily bonus)
     if (correct) {
       let preview = 10
       const newStreak = currentStreak + 1
@@ -59,7 +102,7 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
       setPointsPreview(preview)
     }
     setTimeout(() => {
-      onAnswer(correct, { titleId: question.titleId })
+      onAnswer(correct, { titleId: question.titleId, speedMultiplier: correct ? multiplier : 1 })
     }, 1800)
   }
 
@@ -133,6 +176,18 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
           </div>
         </div>
 
+        {/* ── Timer Bar ── */}
+        {!alreadyAnswered && (
+          <div style={{ height: 4, background: '#111', position: 'relative' }}>
+            <div style={{
+              height: '100%',
+              width: `${timerPct}%`,
+              background: timerColor,
+              transition: 'width 0.1s linear, background 0.4s ease',
+            }} />
+          </div>
+        )}
+
         {/* ── Body ── */}
         <div className="px-5 py-5">
           {alreadyAnswered ? (
@@ -190,6 +245,18 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
           ) : (
             /* Question view */
             <>
+              {/* Timer row */}
+              {!locked && (
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs" style={{ color: timerColor, fontWeight: 700 }}>
+                    {timeLeft <= 2 && timeLeft > 0 ? '⚡ 3× XP!' : timeLeft <= 3 ? '⚡ 2× XP' : 'Answer fast for bonus XP!'}
+                  </span>
+                  <span className="text-sm font-bold" style={{ color: timerColor }}>
+                    {Math.ceil(timeLeft)}s
+                  </span>
+                </div>
+              )}
+
               <p className="text-white text-base font-medium leading-snug mb-5">{question.question}</p>
 
               <div className="flex flex-col gap-2.5">
@@ -242,8 +309,13 @@ export default function TriviaModal({ question, triviaState, dateStr, onAnswer, 
                           )}
                         </div>
                       )}
+                      {getSpeedMultiplier() > 1 && (
+                        <div className="text-xs text-yellow-300 mt-0.5">
+                          ⚡ {getSpeedMultiplier()}× XP speed bonus!
+                        </div>
+                      )}
                     </div>
-                  ) : '✗ WRONG! Streak reset.'}
+                  ) : timeLeft === 0 ? '⏱ TIME\'S UP! Streak reset.' : '✗ WRONG! Streak reset.'}
                 </div>
               )}
 

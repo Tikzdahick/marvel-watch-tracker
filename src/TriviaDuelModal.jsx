@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { TRIVIA_QUESTIONS } from './data/trivia.js'
 import { getWeekStart } from './data/triviaRanks.js'
 
@@ -86,7 +86,7 @@ const TABS = [
 ]
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export default function TriviaDuelModal({ userId, friends = [], triviaState = {}, onClose }) {
+export default function TriviaDuelModal({ userId, friends = [], triviaState = {}, onClose, onEarnXP }) {
   const [tab, setTab] = useState('challenge')
 
   return (
@@ -146,7 +146,7 @@ export default function TriviaDuelModal({ userId, friends = [], triviaState = {}
         )}
         {tab === 'pending' && <PendingTab />}
         {tab === 'duel' && (
-          <DuelTab userId={userId} friends={friends} />
+          <DuelTab userId={userId} friends={friends} onEarnXP={onEarnXP} />
         )}
       </div>
     </div>
@@ -249,11 +249,11 @@ function PendingTab() {
 }
 
 // ─── Duel Tab (Local Play) ────────────────────────────────────────────────────
-function DuelTab({ userId, friends }) {
+const TIMER_SECONDS = 5
+
+function DuelTab({ userId, friends, onEarnXP }) {
   const today = new Date().toISOString().split('T')[0]
   const weekStart = getWeekStart(today)
-
-  // For the local duel, use first friend or a self-duel seed
   const targetId = friends?.[0]?.id ?? 'practice'
 
   const questions = useMemo(
@@ -261,18 +261,43 @@ function DuelTab({ userId, friends }) {
     [userId, targetId, weekStart]
   )
 
-  const [current, setCurrent] = useState(0)
-  const [selected, setSelected] = useState(null)
-  const [revealed, setRevealed] = useState(false)
-  const [score, setScore] = useState(0)
-  const [finished, setFinished] = useState(false)
+  const [current,   setCurrent]   = useState(0)
+  const [selected,  setSelected]  = useState(null)
+  const [revealed,  setRevealed]  = useState(false)
+  const [score,     setScore]     = useState(0)
+  const [finished,  setFinished]  = useState(false)
+  const [timeLeft,  setTimeLeft]  = useState(TIMER_SECONDS)
+  const [totalXP,   setTotalXP]   = useState(0)
+
+  const timerRef   = useRef(null)
+  const startRef   = useRef(Date.now())
+
+  // Start / reset timer whenever question changes
+  useEffect(() => {
+    if (finished) return
+    setTimeLeft(TIMER_SECONDS)
+    startRef.current = Date.now()
+    clearInterval(timerRef.current)
+    timerRef.current = setInterval(() => {
+      setTimeLeft(t => {
+        if (t <= 0.15) { clearInterval(timerRef.current); return 0 }
+        return t - 0.1
+      })
+    }, 100)
+    return () => clearInterval(timerRef.current)
+  }, [current, finished])
+
+  // Auto-wrong when timer expires
+  useEffect(() => {
+    if (!revealed && timeLeft === 0) {
+      clearInterval(timerRef.current)
+      setSelected(-1)
+      setRevealed(true)
+    }
+  }, [timeLeft, revealed])
 
   if (questions.length === 0) {
-    return (
-      <div style={{ padding: 32, textAlign: 'center', color: '#444' }}>
-        No questions available.
-      </div>
-    )
+    return <div style={{ padding: 32, textAlign: 'center', color: '#444' }}>No questions available.</div>
   }
 
   if (finished) {
@@ -285,19 +310,24 @@ function DuelTab({ userId, friends }) {
           DUEL COMPLETE!
         </p>
         <p style={{ fontSize: 36, fontWeight: 700, color: '#fff', margin: '12px 0' }}>
-          You scored {score}/{questions.length}
+          {score}/{questions.length}
         </p>
+        {totalXP > 0 && (
+          <p style={{ fontSize: 14, color: '#F5C518', marginBottom: 8 }}>
+            ⚡ +{totalXP} XP earned (with speed bonuses)
+          </p>
+        )}
         <p style={{ fontSize: 14, color: '#555', marginBottom: 24 }}>
           {score === questions.length
             ? 'Perfect score! You are truly a Marvel master.'
             : score >= 7
             ? 'Great job! Keep training to reach perfection.'
-            : 'Keep watching and learning — you\'ll get there!'}
+            : "Keep watching and learning — you'll get there!"}
         </p>
         <button
           onClick={() => {
             setCurrent(0); setSelected(null); setRevealed(false)
-            setScore(0); setFinished(false)
+            setScore(0); setFinished(false); setTotalXP(0); setTimeLeft(TIMER_SECONDS)
           }}
           style={{
             padding: '12px 28px',
@@ -316,12 +346,29 @@ function DuelTab({ userId, friends }) {
 
   const q = questions[current]
   const LABELS = ['A', 'B', 'C', 'D']
+  const timerPct = (timeLeft / TIMER_SECONDS) * 100
+  const timerColor = timeLeft > 3 ? '#4ade80' : timeLeft > 2 ? '#F5C518' : '#E81C2E'
+
+  function getMultiplier() {
+    const elapsed = Date.now() - startRef.current
+    if (elapsed < 2000) return 3
+    if (elapsed < 3000) return 2
+    return 1
+  }
 
   function handleSelect(idx) {
     if (revealed) return
+    clearInterval(timerRef.current)
+    const correct = idx === q.correctIndex
+    const multiplier = correct ? getMultiplier() : 1
     setSelected(idx)
     setRevealed(true)
-    if (idx === q.correctIndex) setScore(s => s + 1)
+    if (correct) {
+      setScore(s => s + 1)
+      const xpEarned = 10 * multiplier
+      setTotalXP(t => t + xpEarned)
+      onEarnXP?.(xpEarned)
+    }
   }
 
   function handleNext() {
@@ -334,9 +381,11 @@ function DuelTab({ userId, friends }) {
     }
   }
 
+  const multiplier = getMultiplier()
+
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Progress */}
+      {/* Progress row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 13, color: '#555' }}>
           Question <span style={{ color: '#F5C518', fontWeight: 700 }}>{current + 1}</span> / {questions.length}
@@ -346,17 +395,37 @@ function DuelTab({ userId, friends }) {
         </span>
       </div>
 
-      {/* Progress bar */}
+      {/* Question progress bar */}
       <div style={{ height: 4, borderRadius: 2, background: '#1a1a1a', overflow: 'hidden' }}>
         <div style={{
           height: '100%',
-          width: `${((current) / questions.length) * 100}%`,
+          width: `${(current / questions.length) * 100}%`,
           background: 'linear-gradient(90deg, #E81C2E, #F5C518)',
           transition: 'width 0.3s ease',
         }} />
       </div>
 
-      {/* Question */}
+      {/* Timer bar */}
+      <div style={{ borderRadius: 4, overflow: 'hidden', background: '#111', height: 6 }}>
+        <div style={{
+          height: '100%',
+          width: `${timerPct}%`,
+          background: timerColor,
+          transition: 'width 0.1s linear, background 0.4s ease',
+        }} />
+      </div>
+
+      {/* Timer + XP hint row */}
+      {!revealed && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -8 }}>
+          <span style={{ fontSize: 11, color: timerColor, fontWeight: 600 }}>
+            {timeLeft <= 2 && timeLeft > 0 ? '⚡ 3× XP available!' : timeLeft <= 3 ? '⚡ 2× XP' : 'Answer fast for bonus XP'}
+          </span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: timerColor }}>{Math.ceil(timeLeft)}s</span>
+        </div>
+      )}
+
+      {/* Question card */}
       <div style={{
         padding: 20, background: 'rgba(255,255,255,0.03)',
         border: '1px solid #1a1a1a', borderRadius: 14,
@@ -380,6 +449,26 @@ function DuelTab({ userId, friends }) {
           />
         ))}
       </div>
+
+      {/* Speed XP result */}
+      {revealed && selected === q.correctIndex && multiplier > 1 && (
+        <div style={{
+          padding: '8px 14px', borderRadius: 8, textAlign: 'center',
+          background: 'rgba(245,197,24,0.08)', border: '1px solid rgba(245,197,24,0.25)',
+        }}>
+          <span style={{ fontSize: 13, color: '#F5C518', fontWeight: 700 }}>
+            ⚡ Speed bonus! {multiplier}× XP (+{10 * multiplier} XP)
+          </span>
+        </div>
+      )}
+      {revealed && timeLeft === 0 && selected !== q.correctIndex && (
+        <div style={{
+          padding: '8px 14px', borderRadius: 8, textAlign: 'center',
+          background: 'rgba(232,28,46,0.08)', border: '1px solid rgba(232,28,46,0.25)',
+        }}>
+          <span style={{ fontSize: 13, color: '#E81C2E', fontWeight: 700 }}>⏱ Time's up!</span>
+        </div>
+      )}
 
       {/* Next button */}
       {revealed && (

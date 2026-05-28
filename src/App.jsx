@@ -1470,6 +1470,11 @@ export default function App() {
 
       return next
     })
+    // Award XP for correct answer (with speed multiplier)
+    if (correct) {
+      const multiplier = meta.speedMultiplier ?? 1
+      earnXP(Math.round((XP_EVENTS?.TRIVIA_CORRECT ?? 10) * multiplier))
+    }
   }
 
   // ── XP earning ──
@@ -1760,6 +1765,7 @@ export default function App() {
           friends={[]}
           triviaState={triviaState}
           onClose={() => setShowDuel(false)}
+          onEarnXP={earnXP}
         />
       )}
 
