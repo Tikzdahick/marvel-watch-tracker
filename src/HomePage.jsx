@@ -19,6 +19,9 @@ import DailyMissionsWidget from './DailyMissionsWidget.jsx'
 import WeeklySeasonWidget from './WeeklySeasonWidget.jsx'
 import DebateWidget from './DebateWidget.jsx'
 import { MCU_PHASES, INFINITY_STONES } from './data/marvelExtras.js'
+import { getTodayInMCU } from './data/mcuCalendar.js'
+import { getWatchNextRecommendation, getTrendingTitles } from './data/homeFeatures.js'
+import { ERA_FOR_ID, ERAS } from './data/eras.js'
 
 const STONE_KEY = 'mvt-stones-seen'
 function loadStonesSeen() { try { return JSON.parse(localStorage.getItem(STONE_KEY) ?? '[]') } catch { return [] } }
@@ -126,6 +129,7 @@ export default function HomePage({
   onSelectFranchise,
   watched,         // Set of watched IDs — for phase progress + stone tracker
   allTitles = [],  // full list of titles for phase lookup
+  ratings = {},    // { [titleId]: 1-5 } user ratings
   onOpenDetail,    // (titleId) => void
   onOpenRelationshipMap, // () => void
 }) {
@@ -155,6 +159,24 @@ export default function HomePage({
   const watchDates   = useMemo(() => Object.keys(watchHistory ?? {}), [watchHistory])
   const watchStreak  = useMemo(() => calcStreak(watchDates), [watchDates])
   const activeStreak = Math.max(loginStreak, watchStreak)
+
+  // Today in MCU
+  const todayInMCU = useMemo(() => {
+    const dateStr = new Date().toISOString().slice(0, 10)
+    return getTodayInMCU(dateStr)
+  }, [])
+  const todayFormatted = useMemo(() => {
+    return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+  }, [])
+
+  // Watch Next recommendation
+  const watchNext = useMemo(
+    () => getWatchNextRecommendation(watched, ratings, allTitles),
+    [watched, ratings, allTitles]
+  )
+
+  // Trending This Week
+  const trendingTitles = useMemo(() => getTrendingTitles(allTitles), [allTitles])
 
   const cd       = useCountdown(DOOMSDAY)
   const daysLeft = cd.days
@@ -327,6 +349,36 @@ export default function HomePage({
           </p>
         </div>
 
+        {/* ── Today in MCU ── */}
+        {todayInMCU && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid rgba(96,165,250,0.18)' }}>
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl leading-none">{todayInMCU.icon}</span>
+                <div>
+                  <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#60a5fa' }}>
+                    📅 Today in MCU
+                  </div>
+                  <div className="text-[9px]" style={{ color: '#444' }}>{todayFormatted}</div>
+                </div>
+              </div>
+              {todayInMCU.isSpecific && (
+                <span className="text-[9px] px-2 py-0.5 rounded-lg font-semibold flex-shrink-0"
+                  style={{ background: 'rgba(96,165,250,0.1)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }}>
+                  {todayInMCU.type === 'birthday' ? '🎂 Birthday'
+                    : todayInMCU.type === 'release' ? '🎬 Release Day'
+                    : todayInMCU.type === 'bts' ? '🎬 BTS'
+                    : todayInMCU.type === 'comic' ? '📖 Comics'
+                    : '⭐ Event'}
+                </span>
+              )}
+            </div>
+            <div className="px-4 pb-4">
+              <p className="text-[12px] leading-relaxed" style={{ color: '#aaa' }}>{todayInMCU.text}</p>
+            </div>
+          </div>
+        )}
+
         {/* Daily Missions */}
         <DailyMissionsWidget
           dateStr={new Date().toISOString().slice(0, 10)}
@@ -384,6 +436,37 @@ export default function HomePage({
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
                 </svg>
               </div>
+            </button>
+          </div>
+        )}
+
+        {/* ── Watch Next Recommendation ── */}
+        {watchNext && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid rgba(74,222,128,0.2)' }}>
+            <div className="px-4 pt-4 pb-1">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#4ade80' }}>
+                🎯 Watch Next
+              </div>
+            </div>
+            <button
+              onClick={() => onOpenDetail?.(watchNext.title.id)}
+              className="w-full flex items-center gap-4 px-4 py-3 text-left transition-all active:scale-[0.98] group"
+            >
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                style={{ background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.2)' }}
+              >
+                ▶
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-white font-semibold text-[14px] leading-snug group-hover:text-[#4ade80] transition-colors">
+                  {watchNext.title.title}
+                </div>
+                <div className="text-[11px] mt-0.5" style={{ color: '#555' }}>{watchNext.reason}</div>
+              </div>
+              <svg className="w-4 h-4 flex-shrink-0" style={{ color: '#4ade80' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
             </button>
           </div>
         )}
@@ -627,6 +710,61 @@ export default function HomePage({
             ))}
           </div>
         </div>
+
+        {/* ── Trending This Week ── */}
+        {trendingTitles.length > 0 && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: '#0f0f0f', border: '1px solid rgba(168,85,247,0.18)' }}>
+            <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#a855f7' }}>
+                🔥 Trending This Week
+              </div>
+              <span className="text-[9px]" style={{ color: '#444' }}>Rotates weekly</span>
+            </div>
+            <div className="space-y-0">
+              {trendingTitles.map((item, i) => {
+                const eraKey = ERA_FOR_ID[item.title.id]
+                const era = eraKey ? ERAS.find(e => e.key === eraKey) : null
+                return (
+                  <button
+                    key={item.title.id}
+                    onClick={() => onOpenDetail?.(item.title.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all active:scale-[0.98] group"
+                    style={{ borderTop: i > 0 ? '1px solid #151515' : 'none' }}
+                  >
+                    <div
+                      className="w-7 h-7 flex items-center justify-center flex-shrink-0 font-bebas text-xl leading-none"
+                      style={{ color: i === 0 ? '#F5C518' : i === 1 ? '#aaa' : i === 2 ? '#cd7f32' : '#555' }}
+                    >
+                      {item.rank}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-white text-[13px] font-semibold group-hover:text-[#a855f7] transition-colors leading-snug">
+                          {item.title.title}
+                        </span>
+                        {era && (
+                          <span className="text-[9px] px-1.5 py-[2px] rounded font-semibold flex-shrink-0"
+                            style={{ background: 'rgba(168,85,247,0.1)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.18)' }}>
+                            {era.emoji} {era.label}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] mt-0.5 capitalize" style={{ color: '#444' }}>{item.title.type}</div>
+                    </div>
+                    {watched?.has(item.title.id) ? (
+                      <span className="text-[10px] flex-shrink-0 font-bold" style={{ color: '#4ade80' }}>✓</span>
+                    ) : (
+                      <span className="text-[9px] flex-shrink-0 font-semibold px-2 py-0.5 rounded-lg"
+                        style={{ background: 'rgba(168,85,247,0.1)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.2)' }}>
+                        Watch
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Relationship Map ── */}
         {onOpenRelationshipMap && (

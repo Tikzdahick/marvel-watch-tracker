@@ -1988,6 +1988,7 @@ export default function App() {
             setActiveFranchise(franchise)
             saveJSON('mvt-franchise', franchise)
           }}
+          ratings={ratings}
           onOpenDetail={tid => setDetailModalId(tid)}
           onOpenRelationshipMap={() => setShowRelationshipMap(true)}
         />
