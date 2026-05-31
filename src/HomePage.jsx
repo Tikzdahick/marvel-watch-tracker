@@ -287,14 +287,13 @@ export default function HomePage({
             <div className="px-4 pt-3 pb-2">
               <div className="text-[9px] text-[#444] uppercase tracking-widest font-semibold">Choose Your Universe</div>
             </div>
-            <div className="grid grid-cols-2 gap-0">
-              {/* Marvel */}
-              <div className="flex flex-col items-center gap-2 px-4 py-4 border-r border-[#1a1a1a] rounded-bl-2xl"
-                style={{ background: 'rgba(232,28,46,0.06)' }}
-              >
+            {/* Row 1: Marvel (active) + DC */}
+            <div className="grid grid-cols-2 gap-0 border-b border-[#1a1a1a]">
+              {/* Marvel — active, not a button */}
+              <div className="flex flex-col items-center gap-2 px-4 py-4 border-r border-[#1a1a1a]"
+                style={{ background: 'rgba(232,28,46,0.06)' }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-xl"
-                  style={{ background: 'linear-gradient(135deg, #E81C2E 0%, #a0001a 100%)', color: 'white', boxShadow: '0 0 16px rgba(232,28,46,0.4)' }}
-                >
+                  style={{ background: 'linear-gradient(135deg, #E81C2E 0%, #a0001a 100%)', color: 'white', boxShadow: '0 0 16px rgba(232,28,46,0.4)' }}>
                   M
                 </div>
                 <div className="text-center">
@@ -302,33 +301,65 @@ export default function HomePage({
                   <div className="text-[9px] text-[#444]">107 titles</div>
                 </div>
                 <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg"
-                  style={{ background: 'rgba(232,28,46,0.15)', color: '#E81C2E', border: '1px solid rgba(232,28,46,0.25)' }}
-                >
+                  style={{ background: 'rgba(232,28,46,0.15)', color: '#E81C2E', border: '1px solid rgba(232,28,46,0.25)' }}>
                   ✓ ACTIVE
                 </div>
               </div>
               {/* DC */}
-              <button
-                onClick={() => onSelectFranchise('dc')}
-                className="flex flex-col items-center gap-2 px-4 py-4 transition-all active:scale-[0.97] rounded-br-2xl group"
-                style={{ background: 'rgba(255,215,0,0.03)' }}
-              >
+              <button onClick={() => onSelectFranchise('dc')}
+                className="flex flex-col items-center gap-2 px-4 py-4 transition-all active:scale-[0.97] group"
+                style={{ background: 'rgba(255,215,0,0.03)' }}>
                 <div className="w-10 h-10 flex items-center justify-center font-black text-base text-black flex-shrink-0 transition-all group-hover:scale-105"
-                  style={{
-                    background: 'linear-gradient(135deg, #FFD700 0%, #d4a017 100%)',
+                  style={{ background: 'linear-gradient(135deg, #FFD700 0%, #d4a017 100%)',
                     clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-                    boxShadow: '0 0 16px rgba(255,215,0,0.3)',
-                  }}
-                >
+                    boxShadow: '0 0 16px rgba(255,215,0,0.3)' }}>
                   DC
                 </div>
                 <div className="text-center">
                   <div className="font-bebas text-[15px] tracking-widest text-white">DC UNIVERSE</div>
                   <div className="text-[9px] text-[#444]">32 titles</div>
                 </div>
-                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg transition-all group-hover:opacity-100 opacity-70"
-                  style={{ background: 'rgba(255,215,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }}
-                >
+                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg opacity-70 group-hover:opacity-100 transition-all"
+                  style={{ background: 'rgba(255,215,0,0.1)', color: '#FFD700', border: '1px solid rgba(255,215,0,0.2)' }}>
+                  SWITCH →
+                </div>
+              </button>
+            </div>
+            {/* Row 2: Harry Potter + Star Wars */}
+            <div className="grid grid-cols-2 gap-0">
+              {/* Harry Potter */}
+              <button onClick={() => onSelectFranchise('hp')}
+                className="flex flex-col items-center gap-2 px-4 py-4 transition-all active:scale-[0.97] border-r border-[#1a1a1a] group rounded-bl-2xl"
+                style={{ background: 'rgba(201,162,39,0.04)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl transition-all group-hover:scale-105"
+                  style={{ background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1555 100%)',
+                    border: '1px solid rgba(201,162,39,0.4)', boxShadow: '0 0 14px rgba(201,162,39,0.25)' }}>
+                  ⚡
+                </div>
+                <div className="text-center">
+                  <div className="font-bebas text-[15px] tracking-widest text-white">HARRY POTTER</div>
+                  <div className="text-[9px] text-[#444]">12 titles</div>
+                </div>
+                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg opacity-70 group-hover:opacity-100 transition-all"
+                  style={{ background: 'rgba(201,162,39,0.1)', color: '#c9a227', border: '1px solid rgba(201,162,39,0.2)' }}>
+                  SWITCH →
+                </div>
+              </button>
+              {/* Star Wars */}
+              <button onClick={() => onSelectFranchise('sw')}
+                className="flex flex-col items-center gap-2 px-4 py-4 transition-all active:scale-[0.97] group rounded-br-2xl"
+                style={{ background: 'rgba(255,232,31,0.03)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-2xl transition-all group-hover:scale-105"
+                  style={{ background: '#000', border: '1px solid rgba(255,232,31,0.35)',
+                    boxShadow: '0 0 14px rgba(255,232,31,0.2)' }}>
+                  ⚔️
+                </div>
+                <div className="text-center">
+                  <div className="font-bebas text-[15px] tracking-widest text-white">STAR WARS</div>
+                  <div className="text-[9px] text-[#444]">19 titles</div>
+                </div>
+                <div className="text-[10px] font-bold tracking-widest px-3 py-1 rounded-lg opacity-70 group-hover:opacity-100 transition-all"
+                  style={{ background: 'rgba(255,232,31,0.08)', color: '#ffe81f', border: '1px solid rgba(255,232,31,0.2)' }}>
                   SWITCH →
                 </div>
               </button>

@@ -60,6 +60,8 @@ import { fetchFriendships, deleteAllUserData } from './lib/supabaseHelpers.js'
 import WatchDatePickerModal from './WatchDatePickerModal.jsx'
 import CharactersPage       from './CharactersPage.jsx'
 import DCTracker            from './DCTracker.jsx'
+import HPTracker            from './HPTracker.jsx'
+import SWTracker            from './SWTracker.jsx'
 import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
@@ -1624,6 +1626,26 @@ export default function App() {
       }}
       onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
       onDeleteAccount={handleDeleteAccount}
+    />
+  }
+
+  if (activeFranchise === 'hp') {
+    return <HPTracker
+      profile={profile}
+      onBack={() => {
+        setActiveFranchise('marvel')
+        saveJSON('mvt-franchise', 'marvel')
+      }}
+    />
+  }
+
+  if (activeFranchise === 'sw') {
+    return <SWTracker
+      profile={profile}
+      onBack={() => {
+        setActiveFranchise('marvel')
+        saveJSON('mvt-franchise', 'marvel')
+      }}
     />
   }
 
