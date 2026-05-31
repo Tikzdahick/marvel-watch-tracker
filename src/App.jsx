@@ -64,6 +64,8 @@ import HPTracker            from './HPTracker.jsx'
 import SWTracker            from './SWTracker.jsx'
 import MultiverseHub, { HubStatsPage } from './MultiverseHub.jsx'
 import MultiverseAwards from './MultiverseAwards.jsx'
+import MultiverseNews from './MultiverseNews.jsx'
+import MultiverseLeaderboard from './MultiverseLeaderboard.jsx'
 import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
@@ -1615,6 +1617,11 @@ export default function App() {
 
   function handleOnboardingComplete(cfg) {
     setConfig(cfg); saveJSON(SK_CONFIG, cfg)
+    // New onboarding includes profile name — save it so ProfileSetup is skipped
+    if (cfg.profileName) {
+      const prof = { name: cfg.profileName, avatar: null }
+      setProfile(prof); saveJSON(SK_PROFILE, prof)
+    }
     saveJSON(SK_ONBOARDED, true); setOnboarded(true)
   }
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete}/>
@@ -1706,17 +1713,26 @@ export default function App() {
                 loginDates={loginDates}
               />
             )}
+            {hubTab === 'news' && <MultiverseNews/>}
+            {hubTab === 'ranks' && (
+              <MultiverseLeaderboard
+                profile={profile}
+                marvelWatched={watched}
+                marvelTitles={listTitles}
+              />
+            )}
           </>
         )}
-        {/* Hub bottom nav — 5 tabs */}
+        {/* Hub bottom nav — 6 tabs */}
         <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#04060ffa', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="max-w-lg mx-auto flex">
             {[
-              { id: 'home',     label: 'HUB',     icon: '🌌' },
-              { id: 'awards',   label: 'AWARDS',  icon: '🏆' },
-              { id: 'stats',    label: 'STATS',   icon: '📊' },
-              { id: 'profile',  label: 'PROFILE', icon: '👤', action: () => { setShowProfile(true); setShowSettings(false) } },
-              { id: 'settings', label: 'SETTINGS',icon: '⚙️', action: () => { setShowSettings(true); setShowProfile(false) } },
+              { id: 'home',    label: 'HUB',    icon: '🌌' },
+              { id: 'news',    label: 'NEWS',   icon: '📰' },
+              { id: 'awards',  label: 'AWARDS', icon: '🏆' },
+              { id: 'ranks',   label: 'RANKS',  icon: '🥇' },
+              { id: 'profile', label: 'PROFILE',icon: '👤', action: () => { setShowProfile(true); setShowSettings(false) } },
+              { id: 'settings',label: 'MORE',   icon: '⚙️', action: () => { setShowSettings(true); setShowProfile(false) } },
             ].map(t => {
               const active = t.id === 'profile' ? showProfile : t.id === 'settings' ? showSettings : (hubTab === t.id && !showProfile && !showSettings)
               return (
