@@ -1522,11 +1522,11 @@ function DCProfilePage({ profile, watched, listTitles, onBack, onSignOut, onDele
         )
       })()}
 
-      {/* Back to Marvel */}
+      {/* Back to Hub */}
       <button onClick={onBack}
         className="w-full py-3 rounded-xl font-bebas text-lg tracking-widest mb-4 transition-all hover:opacity-80"
-        style={{ background: '#E81C2E', color: 'white' }}>
-        ⚡ BACK TO MARVEL
+        style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }}>
+        🌌 BACK TO MULTIVERSE HUB
       </button>
 
       {/* Sign out */}
@@ -1824,8 +1824,8 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
               </div>
               <button onClick={onBack}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold tracking-wider transition-all hover:opacity-80 flex-shrink-0"
-                style={{ background: '#E81C2E', color: 'white' }}>
-                ⚡ MARVEL
+                style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                🌌 HUB
               </button>
             </div>
 

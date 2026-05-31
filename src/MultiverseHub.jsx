@@ -246,6 +246,23 @@ export default function MultiverseHub({ profile, marvelWatched, marvelTotal, xp,
   const challenge = useMemo(getDailyChallenge, [])
   const featured  = useMemo(getFeaturedTitle,  [])
 
+  // Recent activity across all franchises
+  const recentActivity = useMemo(() => {
+    const DC_TITLES_MAP  = Object.fromEntries(DC_TITLES.map(t => [t.id, t.title]))
+    const HP_TITLES_MAP  = Object.fromEntries(HP_TITLES.map(t => [t.id, t.title]))
+    const SW_TITLES_MAP  = Object.fromEntries(SW_TITLES.map(t => [t.id, t.title]))
+    const dcHist = (loadJSON('dc-watch-history', []) ?? []).slice(0,3).map(e => ({ ts: e.ts, title: DC_TITLES_MAP[e.id] ?? 'Unknown', franchise: 'dc' }))
+    const hpHist = (loadJSON('hp-watch-history', []) ?? []).slice(0,3).map(e => ({ ts: e.ts, title: HP_TITLES_MAP[e.id] ?? 'Unknown', franchise: 'hp' }))
+    const swHist = (loadJSON('sw-watch-history', []) ?? []).slice(0,3).map(e => ({ ts: e.ts, title: SW_TITLES_MAP[e.id] ?? 'Unknown', franchise: 'sw' }))
+    const mvHist = Object.entries(loadJSON('mvt-watch-history', {}) ?? {}).flatMap(([dateStr, ids]) =>
+      (Array.isArray(ids) ? ids : [ids]).map(id => ({ ts: new Date(dateStr).getTime(), title: `Marvel Title #${id}`, franchise: 'marvel' }))
+    )
+    return [...dcHist, ...hpHist, ...swHist, ...mvHist]
+      .filter(e => e.ts && e.title !== 'Unknown')
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 3)
+  }, [tick])
+
   const watchCounts = {
     marvel: marvelWatchedCount,
     dc:     dcWatchedCount,
@@ -404,6 +421,59 @@ export default function MultiverseHub({ profile, marvelWatched, marvelTotal, xp,
           </div>
         </div>
 
+        {/* ── Overall rank/level progress ── */}
+        {totalWatched > 0 && (
+          <div className="rounded-2xl p-4" style={{ background: '#0a0d18', border: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: 'rgba(255,255,255,0.2)' }}>⭐ Multiverse Level</div>
+              <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {totalWatched < 10 ? 'Explorer' : totalWatched < 30 ? 'Adventurer' : totalWatched < 60 ? 'Champion' : totalWatched < 100 ? 'Legend' : 'Multiverse Master'}
+              </span>
+            </div>
+            <div className="h-2 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              {FRANCHISES.map(f => (
+                <div key={f.id} style={{ width: `${totalTitles > 0 ? (watchCounts[f.id] / totalTitles) * 100 : 0}%`, background: f.color, transition: 'width 0.7s' }}/>
+              ))}
+            </div>
+            <div className="flex justify-between text-[8px] mt-1" style={{ color: 'rgba(255,255,255,0.15)' }}>
+              <span>{totalWatched} titles watched</span>
+              <span>{totalTitles - totalWatched} remaining</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── Recent Activity ── */}
+        {recentActivity.length > 0 && (
+          <div>
+            <div className="text-[9px] uppercase tracking-widest font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              🕐 Recent Activity
+            </div>
+            <div className="space-y-1.5">
+              {recentActivity.map((item, i) => {
+                const f = FRANCHISES.find(x => x.id === item.franchise)
+                const diff = Date.now() - item.ts
+                const timeAgo = diff < 3600000 ? `${Math.floor(diff/60000)}m ago`
+                  : diff < 86400000 ? `${Math.floor(diff/3600000)}h ago`
+                  : `${Math.floor(diff/86400000)}d ago`
+                return (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                    style={{ background: '#0a0d18', border: `1px solid rgba(255,255,255,0.04)` }}>
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                      style={{ background: `${f?.color ?? '#fff'}12`, border: `1px solid ${f?.color ?? '#fff'}20` }}>
+                      {f?.emoji ?? f?.logo ?? '🎬'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-semibold text-white truncate">{item.title}</div>
+                      <div className="text-[9px]" style={{ color: f?.color ?? 'rgba(255,255,255,0.3)' }}>{f?.name}</div>
+                    </div>
+                    <span className="text-[9px] flex-shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>{timeAgo}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Featured Title of the Week ── */}
         <div className="rounded-2xl overflow-hidden" style={{ background: '#0a0d18', border: `1px solid ${featured.color}25` }}>
           <div className="px-4 pt-4 pb-2">
@@ -439,6 +509,118 @@ export default function MultiverseHub({ profile, marvelWatched, marvelTotal, xp,
         <div className="text-center pb-4 space-y-1">
           <div className="text-[9px] uppercase tracking-[0.4em]" style={{ color: 'rgba(255,255,255,0.1)' }}>Multiverse Tracker</div>
           <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.06)' }}>Marvel · DC · Harry Potter · Star Wars</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Hub Stats Page ─────────────────────────────────────────────────────────────
+export function HubStatsPage({ marvelWatched, marvelTitles }) {
+  const dcWatched = useMemo(() => new Set(loadJSON('dc-watched-v1', [])), [])
+  const hpWatched = useMemo(() => new Set(loadJSON('hp-watched-v1', [])), [])
+  const swWatched = useMemo(() => new Set(loadJSON('sw-watched-v1', [])), [])
+
+  const marvelCountable = (marvelTitles ?? []).filter(t => !t.comingSoon)
+  const dcCountable     = DC_TITLES.filter(t => !t.comingSoon)
+  const hpCountable     = HP_TITLES.filter(t => !t.comingSoon)
+  const swCountable     = SW_TITLES.filter(t => !t.comingSoon)
+
+  const mW = marvelCountable.filter(t => marvelWatched?.has(t.id)).length
+  const dW = dcCountable.filter(t => dcWatched.has(t.id)).length
+  const hW = hpCountable.filter(t => hpWatched.has(t.id)).length
+  const sW = swCountable.filter(t => swWatched.has(t.id)).length
+
+  const totalW = mW + dW + hW + sW
+  const totalT = marvelCountable.length + dcCountable.length + hpCountable.length + swCountable.length
+  const overallPct = totalT > 0 ? Math.round((totalW / totalT) * 100) : 0
+
+  const rows = [
+    { f: FRANCHISES[0], watched: mW, total: marvelCountable.length },
+    { f: FRANCHISES[1], watched: dW, total: dcCountable.length },
+    { f: FRANCHISES[2], watched: hW, total: hpCountable.length },
+    { f: FRANCHISES[3], watched: sW, total: swCountable.length },
+  ]
+
+  return (
+    <div className="min-h-screen pb-28" style={{ background: '#04060f' }}>
+      <div className="max-w-lg mx-auto px-4 pt-8 space-y-4">
+        <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: 'rgba(255,255,255,0.2)' }}>
+          🌌 Multiverse Stats
+        </div>
+
+        {/* Combined totals */}
+        <div className="rounded-2xl p-5" style={{ background: '#0a0d18', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            {[
+              { label: 'Total Watched', value: totalW, color: '#fff' },
+              { label: 'Remaining',     value: totalT - totalW, color: 'rgba(255,255,255,0.4)' },
+              { label: 'Complete',      value: `${overallPct}%`, color: overallPct > 50 ? '#ffe81f' : '#E81C2E' },
+            ].map(s => (
+              <div key={s.label} className="text-center">
+                <div className="font-bebas text-3xl leading-none mb-0.5" style={{ color: s.color }}>{s.value}</div>
+                <div className="text-[8px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <div className="h-2 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.05)' }}>
+            {rows.map(({ f, watched, total }) => (
+              <div key={f.id} style={{ width: `${totalT > 0 ? (watched / totalT) * 100 : 0}%`, background: f.color, transition: 'width 0.7s' }}/>
+            ))}
+          </div>
+        </div>
+
+        {/* Per-franchise breakdown */}
+        <div className="space-y-3">
+          {rows.map(({ f, watched, total }) => {
+            const pct = total > 0 ? Math.round((watched / total) * 100) : 0
+            return (
+              <div key={f.id} className="rounded-2xl p-4" style={{ background: '#0a0d18', border: `1px solid ${f.color}22` }}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 flex items-center justify-center flex-shrink-0 font-black text-[12px]"
+                    style={{ ...f.logoStyle, width: 32, height: 32, borderRadius: f.id === 'dc' ? 0 : 8, boxShadow: `0 0 10px ${f.glow}` }}>
+                    {f.emoji ?? f.logo}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bebas text-[14px] tracking-widest text-white">{f.name}</div>
+                    <div className="text-[8px] uppercase tracking-wider" style={{ color: f.color + '88' }}>{f.sub}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bebas text-xl leading-none" style={{ color: f.color }}>{pct}%</div>
+                    <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.2)' }}>{watched}/{total}</div>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${pct}%`, background: f.color, boxShadow: `0 0 4px ${f.color}55` }}/>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Fun cross-franchise stats */}
+        <div className="rounded-2xl p-4" style={{ background: '#0a0d18', border: '1px solid rgba(255,255,255,0.04)' }}>
+          <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: 'rgba(255,255,255,0.2)' }}>
+            🏆 Cross-Universe Achievements
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: 'Total titles across all universes', value: `${totalT} titles`, done: true },
+              { label: 'Watched from every franchise', value: mW > 0 && dW > 0 && hW > 0 && sW > 0, done: mW > 0 && dW > 0 && hW > 0 && sW > 0 },
+              { label: 'Multiverse Explorer (50+ total)', value: totalW >= 50, done: totalW >= 50 },
+              { label: 'True Multiverse Master (100+)', value: totalW >= 100, done: totalW >= 100 },
+            ].map((a, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                style={{ background: a.done === true ? 'rgba(255,255,255,0.03)' : 'transparent', border: `1px solid ${a.done === true ? 'rgba(255,255,255,0.06)' : 'transparent'}` }}>
+                <span className="text-base">{a.done === true || a.done ? '✅' : '⬜'}</span>
+                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.45)' }}>{a.label}</span>
+                {typeof a.value === 'string' && (
+                  <span className="ml-auto text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.3)' }}>{a.value}</span>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

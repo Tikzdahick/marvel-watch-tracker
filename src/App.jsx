@@ -62,7 +62,7 @@ import CharactersPage       from './CharactersPage.jsx'
 import DCTracker            from './DCTracker.jsx'
 import HPTracker            from './HPTracker.jsx'
 import SWTracker            from './SWTracker.jsx'
-import MultiverseHub        from './MultiverseHub.jsx'
+import MultiverseHub, { HubStatsPage } from './MultiverseHub.jsx'
 import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
@@ -797,7 +797,9 @@ export default function App() {
   }, [user])
 
   // ── Franchise selector ──
-  const [activeFranchise, setActiveFranchise] = useState(() => loadJSON('mvt-franchise', 'marvel'))
+  const [activeFranchise, setActiveFranchise] = useState(() => loadJSON('mvt-franchise', 'hub'))
+  // Hub-level tab (separate from franchise activeTab so state is preserved when switching back)
+  const [hubTab, setHubTab] = useState('home')
 
   // ── UI state ──
   const [activeTab,      setActiveTab]      = useState('home')
@@ -1616,15 +1618,117 @@ export default function App() {
   }
   if (!onboarded) return <Onboarding onComplete={handleOnboardingComplete}/>
 
+  // ── Hub mode ─────────────────────────────────────────────────────────────
+  function enterFranchise(franchise) {
+    setActiveFranchise(franchise)
+    saveJSON('mvt-franchise', franchise)
+    if (franchise === 'marvel') setActiveTab('home')
+  }
+  function backToHub() {
+    setActiveFranchise('hub')
+    saveJSON('mvt-franchise', 'hub')
+    setHubTab('home')
+  }
+
+  if (activeFranchise === 'hub') {
+    const unlockedHubAchievements = Object.values(achievements).filter(a => a.unlocked).length
+    return (
+      <div className="min-h-screen" style={{ background: '#04060f' }}>
+        {/* Shared modals — reuse main app's modal/page components */}
+        {showProfile && (
+          <ProfilePage
+            profile={profile}
+            config={config}
+            stats={{ watchedCount: listWatchedCount, total, remaining, pct, watchHistory, loginDates, unlockedAchievements: unlockedHubAchievements }}
+            lockPins={lockPins}
+            onUpdateProfile={handleProfileUpdate}
+            onUpdateConfig={handleConfigUpdate}
+            onClose={() => setShowProfile(false)}
+            onResetOnboarding={handleResetOnboarding}
+            onSetupLock={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
+            onDisableLock={handleLockDisable}
+            onChangeLockPin={(tierKey) => setPinModal({ tierKey, mode: 'setup' })}
+            onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
+            onDeleteAccount={handleDeleteAccount}
+            userEmail={user?.email}
+            onShowFriends={() => { setShowProfile(false); setShowFriends(true) }}
+            userId={user?.id}
+            triviaState={triviaState}
+            onOpenLeaderboard={() => { setShowProfile(false); setShowLeaderboard(true) }}
+            xp={xp}
+            earnedBadges={earnedBadges}
+            personalityType={personalityType}
+          />
+        )}
+        {showSettings && (
+          <SettingsModal config={config}
+            onUpdate={cfg => { setConfig(cfg); saveJSON(SK_CONFIG, cfg) }}
+            onClose={() => setShowSettings(false)}
+            spoilerFree={spoilerFree}
+            onToggleSpoilerFree={() => setSpoilerFree(v => !v)}
+            soundsEnabled={soundsEnabled}
+            onToggleSounds={() => setSoundsState(v => !v)}
+            onReplayTutorial={() => { setTutorialDone(false); setShowTutorial(true) }}
+            onOpenThemes={() => setShowThemePicker(true)}
+          />
+        )}
+        {showThemePicker && (
+          <ThemePicker
+            currentTheme={appTheme}
+            onSelect={t => { setAppTheme(t); saveJSON(SK_THEME, t) }}
+            onClose={() => setShowThemePicker(false)}
+          />
+        )}
+        {/* Hub page content */}
+        {!showProfile && !showSettings && !showThemePicker && (
+          <>
+            {hubTab === 'home' && (
+              <MultiverseHub
+                profile={profile}
+                marvelWatched={watched}
+                marvelTotal={listTitles.filter(t => !t.comingSoon).length}
+                xp={xp}
+                onSelectFranchise={enterFranchise}
+              />
+            )}
+            {hubTab === 'stats' && (
+              <HubStatsPage marvelWatched={watched} marvelTitles={listTitles}/>
+            )}
+          </>
+        )}
+        {/* Hub bottom nav */}
+        <nav className="fixed bottom-0 left-0 right: 0 z-30" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#04060ffa', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="max-w-lg mx-auto flex">
+            {[
+              { id: 'home',     label: 'HUB',      icon: '🌌' },
+              { id: 'stats',    label: 'STATS',     icon: '📊' },
+              { id: 'profile',  label: 'PROFILE',   icon: '👤', action: () => { setShowProfile(true); setShowSettings(false) } },
+              { id: 'settings', label: 'SETTINGS',  icon: '⚙️', action: () => { setShowSettings(true); setShowProfile(false) } },
+            ].map(t => {
+              const active = t.id === 'profile' ? showProfile : t.id === 'settings' ? showSettings : (hubTab === t.id && !showProfile && !showSettings)
+              return (
+                <button key={t.id}
+                  onClick={() => { if (t.action) { t.action() } else { setHubTab(t.id); setShowProfile(false); setShowSettings(false) } }}
+                  className="flex-1 flex flex-col items-center gap-0.5 py-3 transition-all relative"
+                  style={{ color: active ? '#fff' : 'rgba(255,255,255,0.25)' }}>
+                  <span className="text-[18px] leading-none">{t.icon}</span>
+                  <span className="font-bebas text-[8px] tracking-wider">{t.label}</span>
+                  {active && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ background: '#fff' }}/>}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+      </div>
+    )
+  }
+
   if (activeFranchise === 'dc') {
     return <DCTracker
       dcListSize={config.dcListSize ?? 'hero'}
       profile={profile}
       user={user}
-      onBack={() => {
-        setActiveFranchise('marvel')
-        saveJSON('mvt-franchise', 'marvel')
-      }}
+      onBack={backToHub}
       onSignOut={() => { setShowProfile(false); setShowAuth(true) }}
       onDeleteAccount={handleDeleteAccount}
     />
@@ -1633,20 +1737,14 @@ export default function App() {
   if (activeFranchise === 'hp') {
     return <HPTracker
       profile={profile}
-      onBack={() => {
-        setActiveFranchise('marvel')
-        saveJSON('mvt-franchise', 'marvel')
-      }}
+      onBack={backToHub}
     />
   }
 
   if (activeFranchise === 'sw') {
     return <SWTracker
       profile={profile}
-      onBack={() => {
-        setActiveFranchise('marvel')
-        saveJSON('mvt-franchise', 'marvel')
-      }}
+      onBack={backToHub}
     />
   }
 
@@ -1979,23 +2077,38 @@ export default function App() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* HOME TAB — Multiverse Hub                                             */}
+      {/* HOME TAB — Marvel franchise home                                      */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'home' && (
-        <MultiverseHub
+        <HomePage
           profile={profile}
-          marvelWatched={watched}
-          marvelTotal={listTitles.filter(t => !t.comingSoon).length}
+          stats={{ watchedCount: listWatchedCount, total, remaining, pct, unlockedAchievements }}
+          nextUp={listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers) && !t.comingSoon) ?? null}
+          loginDates={loginDates}
+          watchHistory={watchHistory}
+          dailyFact={dailyFact}
+          triviaState={triviaState}
+          parties={parties}
+          activeMood={activeMood}
+          onOpenMoodPicker={() => setShowMoodPicker(true)}
+          onOpenTrivia={() => setShowTrivia(true)}
+          onOpenWatchParty={() => setShowWatchParty(true)}
+          onOpenTierList={() => setShowTierList(true)}
           xp={xp}
-          onSelectFranchise={(franchise) => {
-            if (franchise === 'marvel') {
-              setActiveTab('tracker')
-            } else {
-              setActiveFranchise(franchise)
-              saveJSON('mvt-franchise', franchise)
-            }
+          weeklyState={weeklyState}
+          seasonState={seasonState}
+          debateState={debateState}
+          onDebateVote={handleDebateVote}
+          watched={watched}
+          allTitles={listTitles}
+          onNavigate={(tab) => {
+            if (tab === 'profile') { setShowProfile(true) }
+            else { setActiveTab(tab) }
           }}
-          onNavigateMarvel={(tab) => setActiveTab(tab)}
+          onSelectFranchise={null}
+          ratings={ratings}
+          onOpenDetail={tid => setDetailModalId(tid)}
+          onOpenRelationshipMap={() => setShowRelationshipMap(true)}
         />
       )}
 
@@ -2341,91 +2454,46 @@ export default function App() {
         />
       )}
 
-      {/* ── Bottom nav ── */}
-      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#111111', borderTop: '1px solid #2a2a2a' }}>
+      {/* ── Marvel franchise bottom nav (6 tabs) ── */}
+      <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#0e0e0e', borderTop: '1px solid #1e1e1e' }}>
+        {/* Back-to-hub strip */}
+        <button onClick={backToHub}
+          className="w-full flex items-center justify-center gap-1.5 py-1 transition-all active:opacity-70"
+          style={{ background: 'rgba(232,28,46,0.06)', borderBottom: '1px solid #1e1e1e' }}>
+          <svg className="w-3 h-3 text-[#555]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 5l-7 7 7 7"/>
+          </svg>
+          <span className="text-[8px] uppercase tracking-[0.3em] font-semibold text-[#555]">Back to Multiverse Hub</span>
+        </button>
         <div className="max-w-lg mx-auto flex">
           {[
-            {
-              id: 'home', label: 'HOME', badge: null,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'tracker', label: 'TRACKER', badge: null,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-3.75.125V3a.75.75 0 0 1 .75-.75h16.5a.75.75 0 0 1 .75.75v15.75m-18 0H3m16.5 0h1.5m-1.5 0V3.375M6 18.375V3.375m12 15V3.375M6 3.375h12"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'achievements', label: 'AWARDS', badge: unlockedAchievements,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 0 0 7.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 0 0 2.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 0 1 2.916.52 6.003 6.003 0 0 1-5.395 4.972m0 0a6.726 6.726 0 0 1-2.749 1.35m0 0a6.772 6.772 0 0 1-3.044 0"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'stats', label: 'STATS', badge: null,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'community', label: 'SOCIAL', badge: null,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'characters', label: 'HEROES', badge: null,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/>
-                </svg>
-              ),
-            },
-            {
-              id: 'profile', label: 'PROFILE', badge: null, isProfileTab: true,
-              icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/>
-                </svg>
-              ),
-            },
+            { id: 'home',         label: 'HOME',    icon: '🏠' },
+            { id: 'tracker',      label: 'TRACKER', icon: '🎬' },
+            { id: 'achievements', label: 'AWARDS',  icon: '🏆', badge: unlockedAchievements },
+            { id: 'stats',        label: 'STATS',   icon: '📊' },
+            { id: 'characters',   label: 'HEROES',  icon: '⚡' },
+            { id: 'profile',      label: 'PROFILE', icon: '👤', isProfileTab: true },
           ].map(tab => {
             const isActive = tab.isProfileTab
               ? (showProfile && !showFriends)
               : (activeTab === tab.id && !showProfile && !showFriends)
             return (
-              <button
-                key={tab.id}
+              <button key={tab.id}
                 onClick={() => {
                   if (tab.isProfileTab) { setShowProfile(true); setShowFriends(false) }
                   else { setActiveTab(tab.id); setShowProfile(false); setShowFriends(false); setShowWheel(false) }
                 }}
-                className={[
-                  'flex-1 flex flex-col items-center gap-1 py-3 transition-all relative',
-                  isActive ? 'text-[#E81C2E]' : 'text-[#666] hover:text-[#999]',
-                ].join(' ')}
-              >
-                {tab.icon}
-                <span className="font-bebas text-[9px] tracking-wider">{tab.label}</span>
+                className="flex-1 flex flex-col items-center gap-0.5 py-2.5 transition-all relative"
+                style={{ color: isActive ? '#E81C2E' : '#555' }}>
+                <span className="text-[16px] leading-none">{tab.icon}</span>
+                <span className="font-bebas text-[8px] tracking-wider">{tab.label}</span>
                 {tab.badge != null && tab.badge > 0 && (
-                  <span className="absolute top-2 right-[calc(50%-14px)] w-4 h-4 rounded-full bg-[#F5C518] text-black text-[9px] font-black flex items-center justify-center">
+                  <span className="absolute top-1.5 right-[calc(50%-14px)] w-4 h-4 rounded-full bg-[#F5C518] text-black text-[9px] font-black flex items-center justify-center">
                     {tab.badge}
                   </span>
                 )}
                 {isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#E81C2E] rounded-full"/>
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-[#E81C2E] rounded-full"/>
                 )}
               </button>
             )
