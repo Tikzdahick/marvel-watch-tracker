@@ -12,6 +12,8 @@ import { DC_ACHIEVEMENTS } from './data/dcAchievements.js'
 import { DC_TRIVIA_QUESTIONS, getDCDailyTrivia, saveDCTriviaAnswer, getDCTriviaStreak } from './data/dcTrivia.js'
 import { DC_MULTIVERSE, DC_VILLAINS, DC_CITIES, DC_BATMAN_ACTORS, SNYDER_COMPARISON, JL_TEAM } from './data/dcExtras.js'
 import { getDCRank, getNextDCRank } from './data/dcRanks.js'
+import { getTodayInDC } from './data/dcCalendar.js'
+import { getDCWatchNextRecommendation, getDCTrendingTitles, DC_ERA_FOR_ID } from './data/dcHomeFeatures.js'
 import { AvatarDisplay } from './AvatarDisplay.jsx'
 import CommunityFeed from './CommunityFeed.jsx'
 import { SUPABASE_ENABLED, signOut } from './hooks/useAuth.js'
@@ -25,6 +27,7 @@ const SK_ACHIEVE   = 'dc-achievements'
 const SK_VILLAIN_RATINGS = 'dc-villain-ratings'
 const SK_MOOD_RATINGS    = 'dc-mood-ratings'
 const SK_BATMAN_SEEN     = 'dc-batman-seen'
+const SK_WATCH_HISTORY   = 'dc-watch-history'
 
 const DC_FILTERS       = ['all','unwatched','watched','movies','tv']
 const DC_FILTER_LABELS = { all:'All', unwatched:'Unwatched', watched:'Watched', movies:'Movies', tv:'TV' }
@@ -399,6 +402,31 @@ function DCCountdown() {
   )
 }
 
+// ── Countdown boxes (home page) ───────────────────────────────────────────────
+function DCCountdownBoxes() {
+  const [cd, setCd] = useState(() => calcCountdown(DC_DOOMSDAY))
+  useEffect(() => {
+    const id = setInterval(() => setCd(calcCountdown(DC_DOOMSDAY)), 1000)
+    return () => clearInterval(id)
+  }, [])
+  return (
+    <div className="flex gap-2">
+      {[
+        { label: 'Days',  val: cd.days },
+        { label: 'Hours', val: pad2(cd.hours) },
+        { label: 'Min',   val: pad2(cd.minutes) },
+        { label: 'Sec',   val: pad2(cd.seconds) },
+      ].map(({ label, val }) => (
+        <div key={label} className="flex flex-col items-center py-3 rounded-xl flex-1"
+          style={{ background: 'rgba(255,215,0,0.04)', border: '1px solid rgba(255,215,0,0.14)' }}>
+          <span className="font-bebas text-3xl leading-none" style={{ color: ACCENT }}>{val}</span>
+          <span className="text-[8px] uppercase tracking-widest mt-1" style={{ color: TEXT_DIM }}>{label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // ── HOME PAGE ─────────────────────────────────────────────────────────────────
 // ─────────────────────────────────────────────────────────────────────────────
@@ -412,172 +440,492 @@ function getDCMessage(pct, daysLeft) {
   return { msg: 'Every hero starts somewhere. Begin your DC saga.', color: TEXT_MID }
 }
 
-function DCHomePage({ profile, watched, listTitles, loginDates, onNavigate, onOpenTrivia, nextUpId }) {
+function DCHomePage({ profile, watched, listTitles, loginDates, onNavigate, onOpenTrivia, nextUpId, watchHistory, villainRatings, onOpenDetail }) {
   const countable    = listTitles.filter(t => !t.comingSoon)
   const watchedCount = countable.filter(t => watched.has(t.id)).length
   const total        = countable.length
   const pct          = total > 0 ? Math.round((watchedCount / total) * 100) : 0
   const remaining    = total - watchedCount
-  const streak       = calcStreak(loginDates)
   const firstName    = (profile?.name ?? 'Hero').split(' ')[0]
-  const cd           = calcCountdown(DC_DOOMSDAY)
-  const { msg, color: msgColor } = getDCMessage(pct, cd.days)
-  const nextUp = nextUpId ? listTitles.find(t => t.id === nextUpId) : null
+
+  const rank     = getDCRank(watchedCount)
+  const nextRank = getNextDCRank(watchedCount)
+
+  const nextUp    = nextUpId ? listTitles.find(t => t.id === nextUpId) : null
+  const nextUpEra = nextUp ? DC_ERAS.find(e => e.ids.includes(nextUp.id)) : null
+
+  // Daily featured character
+  const featuredChar       = DC_CHARACTERS[Math.floor(Date.now() / 86400000) % DC_CHARACTERS.length]
+  const charAppearances    = featuredChar.titleIds.filter(id => watched.has(id)).length
+
+  // Per-era progress (only eras that have titles in the current list)
+  const eraProgress = DC_ERAS.map(era => {
+    const eraTitles  = listTitles.filter(t => era.ids.includes(t.id) && !t.comingSoon)
+    const eraWatched = eraTitles.filter(t => watched.has(t.id)).length
+    return { era, total: eraTitles.length, watched: eraWatched }
+  }).filter(e => e.total > 0)
+
+  // Recent activity (last 3 watched)
+  const recentActivity = (watchHistory || []).slice(0, 3).map(entry => {
+    const title = listTitles.find(t => t.id === entry.id)
+    return title ? { title, ts: entry.ts } : null
+  }).filter(Boolean)
+
+  // Today in DC
+  const todayInDC = useMemo(() => {
+    const dateStr = new Date().toISOString().slice(0, 10)
+    return getTodayInDC(dateStr)
+  }, [])
+  const todayFormatted = useMemo(() => new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' }), [])
+
+  // Watch Next recommendation
+  const watchNext = useMemo(
+    () => getDCWatchNextRecommendation(watched, villainRatings ?? {}, listTitles),
+    [watched, villainRatings, listTitles]
+  )
+
+  // Trending This Week
+  const trendingTitles = useMemo(() => getDCTrendingTitles(listTitles), [listTitles])
 
   return (
     <div className="min-h-screen flex flex-col pb-24" style={{ background: BG_MAIN }}>
-      {/* Hero banner */}
+
+      {/* ── 1. Gotham skyline header ── */}
       <div className="relative overflow-hidden"
-        style={{ background: 'linear-gradient(180deg, #050d1a 0%, #080f1e 45%, #0a0e1a 100%)' }}>
+        style={{ background: 'linear-gradient(180deg, #010408 0%, #030a14 35%, #06101e 65%, #0a0e1a 100%)', minHeight: 190 }}>
+
+        {/* Atmosphere layers */}
         <div className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse 90% 70% at 50% -10%, rgba(255,215,0,0.1) 0%, transparent 65%)` }}/>
-        <div className="absolute inset-0 pointer-events-none opacity-[0.02]"
-          style={{ backgroundImage: `linear-gradient(rgba(255,215,0,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,215,0,1) 1px, transparent 1px)`, backgroundSize: '40px 40px' }}/>
+          style={{ background: 'radial-gradient(ellipse 130% 80% at 50% -30%, rgba(8,22,60,0.7) 0%, transparent 60%)' }}/>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 50% 40% at 15% 40%, rgba(255,215,0,0.03) 0%, transparent 50%)' }}/>
+        <div className="absolute inset-0 pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse 50% 40% at 85% 35%, rgba(30,60,160,0.06) 0%, transparent 50%)' }}/>
 
-        <div className="max-w-lg mx-auto px-5 pt-14 pb-8 relative">
-          {/* Logo mark */}
-          <div className="flex items-center gap-3 mb-7">
-            <DCShield size={32}/>
+        {/* Gotham building silhouettes */}
+        <svg className="absolute bottom-0 left-0 right-0 w-full pointer-events-none"
+          viewBox="0 0 400 80" preserveAspectRatio="none" style={{ height: 72 }}>
+          <rect x="0"   y="50" width="20" height="30" fill="#020508"/>
+          <rect x="15"  y="38" width="14" height="42" fill="#020508"/>
+          <rect x="25"  y="48" width="22" height="32" fill="#030710"/>
+          <rect x="42"  y="28" width="16" height="52" fill="#020508"/>
+          <polygon points="50,18 53,28 47,28" fill="#020508"/>
+          <rect x="55"  y="42" width="28" height="38" fill="#030710"/>
+          <rect x="78"  y="32" width="18" height="48" fill="#020508"/>
+          <rect x="92"  y="48" width="20" height="32" fill="#030710"/>
+          <rect x="108" y="22" width="14" height="58" fill="#020508"/>
+          <rect x="116" y="10" width="6"  height="70" fill="#010306"/>
+          <polygon points="119,3 122,10 116,10" fill="#010306"/>
+          <rect x="125" y="36" width="26" height="44" fill="#030710"/>
+          <rect x="146" y="44" width="18" height="36" fill="#020508"/>
+          <rect x="160" y="30" width="22" height="50" fill="#030710"/>
+          <rect x="178" y="18" width="12" height="62" fill="#020508"/>
+          <polygon points="183,8 186,18 180,18" fill="#020508"/>
+          <rect x="187" y="40" width="20" height="40" fill="#030710"/>
+          <rect x="203" y="28" width="16" height="52" fill="#020508"/>
+          <rect x="216" y="45" width="22" height="35" fill="#030710"/>
+          <rect x="235" y="32" width="18" height="48" fill="#020508"/>
+          <rect x="250" y="50" width="16" height="30" fill="#030710"/>
+          <rect x="263" y="25" width="14" height="55" fill="#020508"/>
+          <polygon points="269,14 272,25 266,25" fill="#020508"/>
+          <rect x="275" y="40" width="26" height="40" fill="#030710"/>
+          <rect x="297" y="30" width="20" height="50" fill="#020508"/>
+          <rect x="314" y="47" width="18" height="33" fill="#030710"/>
+          <rect x="329" y="34" width="16" height="46" fill="#020508"/>
+          <rect x="342" y="44" width="22" height="36" fill="#030710"/>
+          <rect x="361" y="24" width="12" height="56" fill="#020508"/>
+          <rect x="370" y="40" width="30" height="40" fill="#030710"/>
+          {/* Window lights */}
+          <rect x="119" y="22" width="1.5" height="1.5" fill="rgba(255,215,0,0.5)"/>
+          <rect x="183" y="26" width="1.5" height="1.5" fill="rgba(80,140,255,0.5)"/>
+          <rect x="269" y="20" width="1.5" height="1.5" fill="rgba(255,215,0,0.4)"/>
+          <rect x="46"  y="34" width="1"   height="1"   fill="rgba(80,140,255,0.4)"/>
+        </svg>
+
+        {/* Subtle gold horizon line */}
+        <div className="absolute pointer-events-none"
+          style={{ bottom: 70, left: 0, right: 0, height: 1,
+            background: 'linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.1) 25%, rgba(30,70,180,0.12) 50%, rgba(255,215,0,0.1) 75%, transparent 100%)' }}/>
+
+        {/* Header content */}
+        <div className="relative max-w-lg mx-auto px-5 pt-10 pb-20">
+          <div className="flex items-center gap-3 mb-5">
+            <DCShield size={34}/>
             <div>
-              <div className="font-bebas text-[10px] tracking-[0.35em] leading-none mb-0.5" style={{ color: ACCENT }}>DC UNIVERSE</div>
-              <div className="font-bebas text-[20px] tracking-[0.15em] text-white leading-none">WATCH TRACKER</div>
+              <div className="font-bebas text-[9px] tracking-[0.4em] leading-none mb-0.5" style={{ color: ACCENT }}>DC UNIVERSE</div>
+              <div className="font-bebas text-[21px] tracking-[0.12em] text-white leading-none">WATCH TRACKER</div>
             </div>
           </div>
-
-          {/* Avatar + welcome */}
-          <div className="flex items-center gap-4 mb-7">
+          <div className="flex items-center gap-3">
             <AvatarDisplay avatar={profile?.avatar} name={profile?.name} size="home"/>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: TEXT_DIM }}>Welcome back</div>
-              <div className="font-bebas text-[32px] text-white tracking-wide leading-none truncate">{firstName}</div>
-              {streak > 1 && (
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-sm">🔥</span>
-                  <span className="font-semibold text-[12px]" style={{ color: ACCENT }}>{streak}-day streak</span>
-                </div>
-              )}
+            <div>
+              <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: TEXT_DIM }}>Welcome back</div>
+              <div className="font-bebas text-[28px] text-white tracking-wide leading-none">{firstName}</div>
             </div>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-2.5 mb-5">
-            {[
-              { label: 'Watched',   value: watchedCount, color: ACCENT },
-              { label: 'Remaining', value: remaining,    color: '#fff' },
-              { label: 'Complete',  value: `${pct}%`,   color: ACCENT },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-2xl p-4 flex flex-col items-center text-center" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
-                <span className="font-bebas text-3xl leading-none mb-1" style={{ color }}>{value}</span>
-                <span className="text-[9px] uppercase tracking-widest" style={{ color: TEXT_DIM }}>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Progress bar */}
-          <div className="h-2 rounded-full overflow-hidden mb-2" style={{ background: BORDER }}>
-            <div className="h-full rounded-full transition-all duration-1000"
-              style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${ACCENT2} 0%, ${ACCENT} 100%)` }}/>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-[9px]" style={{ color: TEXT_DIM }}>0</span>
-            <span className="text-[9px] font-mono" style={{ color: TEXT_MID }}>{watchedCount} / {total} titles</span>
-            <span className="text-[9px]" style={{ color: TEXT_DIM }}>{total}</span>
           </div>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="max-w-lg mx-auto px-5 w-full space-y-4 mt-5">
+      {/* ── Body ── */}
+      <div className="max-w-lg mx-auto px-4 w-full space-y-4 mt-4">
 
-        {/* Motivational */}
-        <div className="rounded-2xl px-5 py-4" style={{ background: BG_CARD2, border: `1px solid ${msgColor}22` }}>
-          <p className="text-[13px] leading-relaxed font-medium italic" style={{ color: msgColor }}>"{msg}"</p>
+        {/* ── 2. Lantern rank + XP progress ── */}
+        <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${rank.color}33` }}>
+          <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>Your Lantern Rank</div>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-4xl flex-shrink-0">{rank.icon}</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-bebas text-xl tracking-widest leading-none" style={{ color: rank.color }}>{rank.label}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>{rank.corps} · {rank.emotion}</div>
+            </div>
+            <div className="flex-shrink-0 text-right">
+              <div className="font-bebas text-2xl leading-none" style={{ color: ACCENT }}>{watchedCount}</div>
+              <div className="text-[9px] uppercase tracking-widest" style={{ color: TEXT_DIM }}>watched</div>
+            </div>
+          </div>
+          {nextRank && (() => {
+            const progress = watchedCount - rank.minWatched
+            const range    = nextRank.minWatched - rank.minWatched
+            const barPct   = Math.round((progress / range) * 100)
+            return (
+              <>
+                <div className="h-2 rounded-full overflow-hidden mb-1.5" style={{ background: BORDER }}>
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${barPct}%`, background: `linear-gradient(90deg, ${rank.color} 0%, ${nextRank.color} 100%)` }}/>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[9px]" style={{ color: rank.color }}>{rank.label}</span>
+                  <span className="text-[9px]" style={{ color: TEXT_DIM }}>{nextRank.minWatched - watchedCount} more → {nextRank.label}</span>
+                  <span className="text-[9px]" style={{ color: nextRank.color }}>{nextRank.icon}</span>
+                </div>
+              </>
+            )
+          })()}
         </div>
 
-        {/* Batman countdown */}
-        <div className="rounded-2xl px-5 py-4" style={{ background: BG_CARD2, border: `1px solid ${ACCENT}1a` }}>
-          <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Batman: The Brave and the Bold</div>
-          <div className="flex items-center gap-2">
-            <DCCountdown/>
-            <span className="text-[9px] uppercase tracking-widest" style={{ color: TEXT_DIM }}>until Batman arrives</span>
+        {/* ── 3. Stats row (4 boxes) ── */}
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: 'Watched',   value: watchedCount, color: ACCENT },
+            { label: 'Remaining', value: remaining,    color: '#fff' },
+            { label: 'Complete',  value: `${pct}%`,   color: '#60a5fa' },
+            { label: 'Total',     value: total,        color: ACCENT },
+          ].map(({ label, value, color }) => (
+            <div key={label} className="rounded-xl p-3 flex flex-col items-center text-center"
+              style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+              <span className="font-bebas text-2xl leading-none mb-1" style={{ color }}>{value}</span>
+              <span className="text-[8px] uppercase tracking-widest" style={{ color: TEXT_DIM }}>{label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── 4. Doomsday countdown ── */}
+        <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid rgba(255,215,0,0.12)` }}>
+          <div className="text-[9px] uppercase tracking-widest mb-0.5 font-semibold" style={{ color: TEXT_DIM }}>Batman: The Brave and the Bold</div>
+          <div className="text-[10px] mb-3 italic" style={{ color: TEXT_MID }}>Countdown to the new DCU</div>
+          <DCCountdownBoxes/>
+        </div>
+
+        {/* ── 5. Era progress ── */}
+        <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+          <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>Era Progress</div>
+          <div className="space-y-3">
+            {eraProgress.map(({ era, watched: ew, total: et }) => {
+              const epct = et > 0 ? Math.round((ew / et) * 100) : 0
+              return (
+                <div key={era.key}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px] font-medium" style={{ color: TEXT_MAIN }}>{era.emoji} {era.label}</span>
+                    <span className="text-[10px] font-mono" style={{ color: TEXT_DIM }}>{ew}/{et}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: BORDER }}>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${epct}%`, background: `linear-gradient(90deg, ${ACCENT2} 0%, ${ACCENT} 100%)` }}/>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 
-        {/* Next up */}
+        {/* ── 6. Up Next (large card) ── */}
         {nextUp && (
           <div>
             <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>▶ Up Next</div>
             <button onClick={() => onNavigate('tracker')}
-              className="w-full text-left rounded-2xl p-4 transition-all active:scale-[0.98]"
-              style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `rgba(255,215,0,0.1)`, border: `1px solid rgba(255,215,0,0.2)` }}>
-                  <svg className="w-5 h-5" style={{ color: ACCENT }} fill="currentColor" viewBox="0 0 24 24">
+              className="w-full text-left rounded-2xl p-5 transition-all active:scale-[0.98]"
+              style={{ background: `linear-gradient(135deg, #0d1829 0%, #0a1020 100%)`, border: `1px solid ${ACCENT}2a` }}>
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${ACCENT}14`, border: `1px solid ${ACCENT}24` }}>
+                  <svg className="w-7 h-7" style={{ color: ACCENT }} fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: ACCENT }}>UP NEXT</div>
-                  <div className="text-sm text-white font-semibold truncate">{nextUp.title}</div>
-                  <div className="text-[10px] mt-0.5 capitalize" style={{ color: TEXT_MID }}>{nextUp.type}</div>
+                  {nextUpEra && (
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider mb-1.5"
+                      style={{ background: `rgba(255,215,0,0.08)`, border: `1px solid rgba(255,215,0,0.2)`, color: ACCENT }}>
+                      {nextUpEra.emoji} {nextUpEra.label}
+                    </div>
+                  )}
+                  <div className="font-bebas text-xl text-white tracking-wide leading-tight">{nextUp.title}</div>
+                  <div className="text-[10px] mt-0.5 capitalize" style={{ color: TEXT_MID }}>{nextUp.year} · {nextUp.type}</div>
                 </div>
-                <svg className="w-4 h-4 flex-shrink-0" style={{ color: TEXT_DIM }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
+                <div className="flex-shrink-0">
+                  <div className="px-3 py-2 rounded-xl text-[11px] font-bold tracking-wide"
+                    style={{ background: ACCENT, color: '#000' }}>
+                    Watch Now
+                  </div>
+                </div>
               </div>
             </button>
           </div>
         )}
 
-        {/* Lantern Corps rank */}
-        {(() => {
-          const rank = getDCRank(watchedCount)
-          const next = getNextDCRank(watchedCount)
-          return (
-            <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${rank.color}33` }}>
-              <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Your Lantern Rank</div>
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">{rank.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bebas text-lg tracking-widest leading-none" style={{ color: rank.color }}>{rank.label}</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>{rank.corps} · {rank.emotion}</div>
-                  <p className="text-[10px] mt-1 italic leading-snug" style={{ color: TEXT_DIM }}>"{rank.oath.slice(0, 55)}…"</p>
+        {/* ── 7. Featured Character ── */}
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid rgba(255,215,0,0.1)` }}>
+          <div className="px-4 pt-4 pb-4" style={{ background: BG_CARD2 }}>
+            <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>★ Featured Character · Daily Spotlight</div>
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+                style={{ background: featuredChar.bg || BG_CARD, border: `1px solid ${featuredChar.color ?? ACCENT}33` }}>
+                {featuredChar.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <span className="font-bebas text-[20px] leading-none" style={{ color: featuredChar.color ?? ACCENT }}>{featuredChar.name}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide"
+                    style={{ background: `${featuredChar.color ?? ACCENT}1a`, color: featuredChar.color ?? ACCENT }}>
+                    {featuredChar.role}
+                  </span>
+                </div>
+                {featuredChar.realName && (
+                  <div className="text-[10px] mb-1.5" style={{ color: TEXT_DIM }}>{featuredChar.realName}</div>
+                )}
+                <p className="text-[11px] leading-relaxed mb-2" style={{ color: TEXT_MID }}>
+                  {featuredChar.desc?.slice(0, 110)}{(featuredChar.desc?.length ?? 0) > 110 ? '…' : ''}
+                </p>
+                <div className="text-[10px]" style={{ color: TEXT_DIM }}>
+                  Appearances watched: <span style={{ color: ACCENT }}>{charAppearances}</span>
+                  <span style={{ color: TEXT_DIM }}> / {featuredChar.titleIds.length}</span>
                 </div>
               </div>
-              {next && (
-                <div className="mt-2 text-[10px]" style={{ color: TEXT_DIM }}>
-                  Next: {next.icon} {next.label} at {next.minWatched} watched · {next.minWatched - watchedCount} to go
+            </div>
+          </div>
+        </div>
+
+        {/* ── 8. Today in DC ── */}
+        {todayInDC && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: BG_CARD2, border: `1px solid rgba(30,80,200,0.25)` }}>
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl leading-none">{todayInDC.icon}</span>
+                <div>
+                  <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: '#60a5fa' }}>
+                    📅 Today in DC
+                  </div>
+                  <div className="text-[9px]" style={{ color: TEXT_DIM }}>{todayFormatted}</div>
                 </div>
+              </div>
+              {todayInDC.isSpecific && (
+                <span className="text-[9px] px-2 py-0.5 rounded-lg font-semibold flex-shrink-0"
+                  style={{ background: 'rgba(96,165,250,0.1)', color: '#60a5fa', border: '1px solid rgba(96,165,250,0.2)' }}>
+                  {todayInDC.type === 'birthday' ? '🎂 Birthday'
+                    : todayInDC.type === 'release' ? '🎬 Release Day'
+                    : todayInDC.type === 'bts' ? '🎬 BTS'
+                    : todayInDC.type === 'comic' ? '📖 Comics'
+                    : '⭐ Event'}
+                </span>
               )}
             </div>
-          )
-        })()}
+            <div className="px-4 pb-4">
+              <p className="text-[12px] leading-relaxed" style={{ color: TEXT_MAIN }}>{todayInDC.text}</p>
+            </div>
+          </div>
+        )}
 
-        {/* Quick actions */}
+        {/* ── 9. Watch Next Recommendation ── */}
+        {watchNext && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: BG_CARD2, border: `1px solid rgba(255,215,0,0.2)` }}>
+            <div className="px-4 pt-4 pb-1">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: ACCENT }}>
+                🎯 Watch Next
+              </div>
+            </div>
+            <button
+              onClick={() => onOpenDetail?.(watchNext.title.id)}
+              className="w-full flex items-center gap-4 px-4 py-3 text-left transition-all active:scale-[0.98] group"
+            >
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                style={{ background: `${ACCENT}14`, border: `1px solid ${ACCENT}33` }}>
+                ▶
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-white font-semibold text-[14px] leading-snug transition-colors"
+                  style={{ color: 'white' }}>
+                  {watchNext.title.title}
+                </div>
+                <div className="text-[11px] mt-0.5" style={{ color: TEXT_MID }}>{watchNext.reason}</div>
+              </div>
+              <div className="px-3 py-2 rounded-xl text-[11px] font-bold tracking-wide flex-shrink-0"
+                style={{ background: ACCENT, color: '#000' }}>
+                Watch
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* ── 10. Trending This Week ── */}
+        {trendingTitles.length > 0 && (
+          <div className="rounded-2xl overflow-hidden" style={{ background: BG_CARD2, border: `1px solid rgba(30,60,160,0.3)` }}>
+            <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+              <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: ACCENT }}>
+                🔥 Trending This Week
+              </div>
+              <span className="text-[9px]" style={{ color: TEXT_DIM }}>Rotates weekly</span>
+            </div>
+            <div className="space-y-0">
+              {trendingTitles.map((item, i) => {
+                const eraKey = DC_ERA_FOR_ID[item.title.id]
+                const era = eraKey ? DC_ERAS.find(e => e.key === eraKey) : null
+                return (
+                  <button
+                    key={item.title.id}
+                    onClick={() => onOpenDetail?.(item.title.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all active:scale-[0.98] group"
+                    style={{ borderTop: i > 0 ? `1px solid rgba(255,255,255,0.04)` : 'none' }}
+                  >
+                    <div className="w-7 h-7 flex items-center justify-center flex-shrink-0 font-bebas text-xl leading-none"
+                      style={{ color: i === 0 ? ACCENT : i === 1 ? '#aaa' : i === 2 ? '#cd7f32' : TEXT_DIM }}>
+                      {item.rank}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[13px] font-semibold leading-snug" style={{ color: 'white' }}>
+                          {item.title.title}
+                        </span>
+                        {era && (
+                          <span className="text-[9px] px-1.5 py-[2px] rounded font-semibold flex-shrink-0"
+                            style={{ background: `${ACCENT}12`, color: ACCENT, border: `1px solid ${ACCENT}30` }}>
+                            {era.emoji} {era.label}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] mt-0.5 capitalize" style={{ color: TEXT_DIM }}>{item.title.type}</div>
+                    </div>
+                    {watched?.has(item.title.id) ? (
+                      <span className="text-[10px] flex-shrink-0 font-bold" style={{ color: ACCENT }}>✓</span>
+                    ) : (
+                      <span className="text-[9px] flex-shrink-0 font-semibold px-2 py-0.5 rounded-lg"
+                        style={{ background: `${ACCENT2}44`, color: '#60a5fa', border: `1px solid rgba(30,80,200,0.3)` }}>
+                        Watch
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── 11. Quick actions (5 buttons) ── */}
         <div>
           <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Quick Actions</div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-5 gap-2">
             {[
-              { icon: '⚡', label: 'Trivia', sub: 'Daily DC quiz', onClick: onOpenTrivia },
-              { icon: '🦸', label: 'Heroes', sub: 'DC characters', onClick: () => onNavigate('heroes') },
-              { icon: '📊', label: 'Stats',  sub: 'Your progress', onClick: () => onNavigate('stats') },
-            ].map(({ icon, label, sub, onClick }) => (
+              { icon: '🎬', label: 'Tracker', onClick: () => onNavigate('tracker') },
+              { icon: '⚡', label: 'Trivia',  onClick: onOpenTrivia },
+              { icon: '🦸', label: 'Heroes',  onClick: () => onNavigate('heroes') },
+              { icon: '🏆', label: 'Awards',  onClick: () => onNavigate('awards') },
+              { icon: '📊', label: 'Stats',   onClick: () => onNavigate('stats') },
+            ].map(({ icon, label, onClick }) => (
               <button key={label} onClick={onClick}
-                className="flex flex-col items-center text-center gap-2 p-4 rounded-2xl transition-all active:scale-[0.97]"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl transition-all active:scale-[0.95]"
                 style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl"
-                  style={{ background: `${ACCENT}18`, border: `1px solid ${ACCENT}28` }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center text-lg"
+                  style={{ background: `${ACCENT}10`, border: `1px solid ${ACCENT}1c` }}>
                   {icon}
                 </div>
-                <div>
-                  <div className="text-white text-[12px] font-semibold leading-tight">{label}</div>
-                  <div className="text-[9px] mt-0.5" style={{ color: TEXT_DIM }}>{sub}</div>
-                </div>
+                <span className="text-[10px] text-white font-medium">{label}</span>
               </button>
             ))}
           </div>
         </div>
+
+        {/* ── 9. Recent activity ── */}
+        {recentActivity.length > 0 && (
+          <div>
+            <div className="text-[9px] uppercase tracking-widest mb-2 font-semibold" style={{ color: TEXT_DIM }}>Recently Watched</div>
+            <div className="space-y-2">
+              {recentActivity.map(({ title, ts }) => {
+                const era = DC_ERAS.find(e => e.ids.includes(title.id))
+                const diff = Date.now() - ts
+                const timeAgo = diff < 3600000
+                  ? `${Math.floor(diff / 60000)}m ago`
+                  : diff < 86400000
+                    ? `${Math.floor(diff / 3600000)}h ago`
+                    : `${Math.floor(diff / 86400000)}d ago`
+                return (
+                  <div key={title.id} className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                    style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
+                      style={{ background: `${ACCENT}0e`, border: `1px solid ${ACCENT}18` }}>
+                      {era?.emoji ?? '🎬'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[12px] font-semibold text-white truncate">{title.title}</div>
+                      <div className="text-[9px] capitalize" style={{ color: TEXT_DIM }}>{title.year} · {title.type}</div>
+                    </div>
+                    <span className="text-[9px] flex-shrink-0" style={{ color: TEXT_DIM }}>{timeAgo}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── 10. Justice League assembly ── */}
+        <div className="rounded-2xl p-4 mb-6" style={{ background: BG_CARD2, border: `1px solid rgba(255,215,0,0.12)` }}>
+          <div className="text-[9px] uppercase tracking-widest mb-1 font-semibold" style={{ color: TEXT_DIM }}>Justice League Assembly</div>
+          <div className="text-[10px] mb-3 italic" style={{ color: TEXT_MID }}>
+            {JL_TEAM.teamMovies.filter(id => watched.has(id)).length}/{JL_TEAM.teamMovies.length} team films watched
+          </div>
+          <div className="space-y-2.5">
+            {JL_TEAM.members.map(member => (
+              <div key={member.key} className="flex items-center gap-3">
+                <div className="text-xl w-7 text-center flex-shrink-0">{member.emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-semibold text-white truncate">{member.name}</div>
+                  <div className="text-[9px]" style={{ color: TEXT_DIM }}>{member.realName}</div>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  {JL_TEAM.teamMovies.map(movieId => {
+                    const hasFilm    = watched.has(movieId)
+                    const inFilm     = member.titleIds.includes(movieId)
+                    return (
+                      <div key={movieId}
+                        className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold"
+                        style={{
+                          background: hasFilm && inFilm ? `${ACCENT}20` : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${hasFilm && inFilm ? ACCENT : 'rgba(255,255,255,0.07)'}`,
+                          color: hasFilm && inFilm ? ACCENT : TEXT_DIM,
+                        }}>
+                        {hasFilm && inFilm ? '✓' : inFilm ? '·' : '—'}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 pt-3 flex justify-between text-[9px]"
+            style={{ borderTop: `1px solid rgba(255,255,255,0.05)`, color: TEXT_DIM }}>
+            <span>JL (2017)</span>
+            <span>ZSJL (2021)</span>
+          </div>
+        </div>
+
       </div>
     </div>
   )
@@ -1295,6 +1643,7 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
   const [villainRatings, setVillainRatings] = useState(() => loadJSON(SK_VILLAIN_RATINGS, {}))
   const [moodRatings,    setMoodRatings]   = useState(() => loadJSON(SK_MOOD_RATINGS, {}))
   const [batmanSeen,     setBatmanSeen]    = useState(() => new Set(loadJSON(SK_BATMAN_SEEN, [])))
+  const [watchHistory,   setWatchHistory]  = useState(() => loadJSON(SK_WATCH_HISTORY, []))
 
   // Track DC login dates for streak
   const [loginDates] = useState(() => {
@@ -1309,12 +1658,20 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
   })
 
   function toggleWatched(id) {
+    const isNewlyWatched = !watched.has(id)
     setWatched(prev => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id); else next.add(id)
       saveJSON(SK_WATCHED, [...next])
       return next
     })
+    if (isNewlyWatched) {
+      setWatchHistory(prev => {
+        const next = [{ id, ts: Date.now() }, ...prev.filter(e => e.id !== id)].slice(0, 50)
+        saveJSON(SK_WATCH_HISTORY, next)
+        return next
+      })
+    }
   }
 
   function changeListSize(size) {
@@ -1519,8 +1876,11 @@ export default function DCTracker({ onBack, dcListSize = 'hero', profile, user, 
           listTitles={listTitles}
           loginDates={loginDates}
           nextUpId={nextUpId}
+          watchHistory={watchHistory}
+          villainRatings={villainRatings}
           onNavigate={setActiveTab}
           onOpenTrivia={() => setShowTrivia(true)}
+          onOpenDetail={id => { const t = listTitles.find(x => x.id === id); if (t) setSelectedTitle(t) }}
         />
       )}
 
