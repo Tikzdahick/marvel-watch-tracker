@@ -63,6 +63,7 @@ import DCTracker            from './DCTracker.jsx'
 import HPTracker            from './HPTracker.jsx'
 import SWTracker            from './SWTracker.jsx'
 import MultiverseHub, { HubStatsPage } from './MultiverseHub.jsx'
+import MultiverseAwards from './MultiverseAwards.jsx'
 import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
@@ -1623,6 +1624,10 @@ export default function App() {
     setActiveFranchise(franchise)
     saveJSON('mvt-franchise', franchise)
     if (franchise === 'marvel') setActiveTab('home')
+    // Track visited franchises for the Multiverse Explorer achievement
+    const visited = new Set(loadJSON('mvt-visited-franchises', []))
+    visited.add(franchise)
+    saveJSON('mvt-visited-franchises', [...visited])
   }
   function backToHub() {
     setActiveFranchise('hub')
@@ -1694,16 +1699,24 @@ export default function App() {
             {hubTab === 'stats' && (
               <HubStatsPage marvelWatched={watched} marvelTitles={listTitles}/>
             )}
+            {hubTab === 'awards' && (
+              <MultiverseAwards
+                marvelWatched={watched}
+                marvelTitles={listTitles}
+                loginDates={loginDates}
+              />
+            )}
           </>
         )}
-        {/* Hub bottom nav */}
-        <nav className="fixed bottom-0 left-0 right: 0 z-30" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#04060ffa', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+        {/* Hub bottom nav — 5 tabs */}
+        <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: '#04060ffa', backdropFilter: 'blur(16px)', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="max-w-lg mx-auto flex">
             {[
-              { id: 'home',     label: 'HUB',      icon: '🌌' },
-              { id: 'stats',    label: 'STATS',     icon: '📊' },
-              { id: 'profile',  label: 'PROFILE',   icon: '👤', action: () => { setShowProfile(true); setShowSettings(false) } },
-              { id: 'settings', label: 'SETTINGS',  icon: '⚙️', action: () => { setShowSettings(true); setShowProfile(false) } },
+              { id: 'home',     label: 'HUB',     icon: '🌌' },
+              { id: 'awards',   label: 'AWARDS',  icon: '🏆' },
+              { id: 'stats',    label: 'STATS',   icon: '📊' },
+              { id: 'profile',  label: 'PROFILE', icon: '👤', action: () => { setShowProfile(true); setShowSettings(false) } },
+              { id: 'settings', label: 'SETTINGS',icon: '⚙️', action: () => { setShowSettings(true); setShowProfile(false) } },
             ].map(t => {
               const active = t.id === 'profile' ? showProfile : t.id === 'settings' ? showSettings : (hubTab === t.id && !showProfile && !showSettings)
               return (
