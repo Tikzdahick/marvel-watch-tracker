@@ -157,32 +157,41 @@ export default function Onboarding({ onComplete }) {
 
         {/* ── Logo / Title ── */}
         <div className="flex flex-col items-center gap-3 pt-4 animate-[fadeIn_0.6s_ease_both]">
-          <div className="flex items-center gap-3">
-            {/* Marvel M */}
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-black shadow-[0_0_24px_rgba(232,28,46,0.5)]"
-              style={{ background: 'linear-gradient(135deg, #E81C2E 0%, #a0111e 100%)' }}
-            >
-              <span className="text-white">M</span>
+          {/* 4-franchise portal row */}
+          <div className="flex items-center gap-2">
+            {/* Marvel */}
+            <div className="w-13 h-13 rounded-2xl flex items-center justify-center text-xl font-black"
+              style={{ width: 52, height: 52, background: 'linear-gradient(135deg, #E81C2E 0%, #a0111e 100%)', boxShadow: '0 0 20px rgba(232,28,46,0.45)' }}>
+              <span className="text-white text-[22px]">M</span>
             </div>
-            <span className="text-2xl text-[#333]">×</span>
-            {/* DC Shield */}
-            <div
-              className="w-14 h-14 flex items-center justify-center font-black text-xl text-black"
-              style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #d4a017 100%)',
+            <span className="text-[#333] text-lg">·</span>
+            {/* DC */}
+            <div className="flex items-center justify-center font-black text-[17px] text-black"
+              style={{ width: 52, height: 52, background: 'linear-gradient(135deg, #FFD700 0%, #d4a017 100%)',
                 clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
-                boxShadow: '0 0 20px rgba(255,215,0,0.4)',
-              }}
-            >
+                boxShadow: '0 0 16px rgba(255,215,0,0.4)' }}>
               DC
+            </div>
+            <span className="text-[#333] text-lg">·</span>
+            {/* Harry Potter */}
+            <div className="rounded-2xl flex items-center justify-center text-2xl"
+              style={{ width: 52, height: 52, background: 'linear-gradient(135deg, #1a0a2e 0%, #2d1555 100%)',
+                border: '1px solid rgba(201,162,39,0.5)', boxShadow: '0 0 16px rgba(201,162,39,0.3)' }}>
+              ⚡
+            </div>
+            <span className="text-[#333] text-lg">·</span>
+            {/* Star Wars */}
+            <div className="rounded-2xl flex items-center justify-center text-2xl"
+              style={{ width: 52, height: 52, background: '#030308',
+                border: '1px solid rgba(255,232,31,0.4)', boxShadow: '0 0 16px rgba(255,232,31,0.22)' }}>
+              ⚔️
             </div>
           </div>
           <h1 className="font-bebas text-4xl tracking-[0.15em] text-white text-center">
             MULTIVERSE TRACKER
           </h1>
           <p className="text-sm text-[#555] text-center tracking-wider">
-            Choose your roster for each universe
+            Marvel · DC · Harry Potter · Star Wars
           </p>
         </div>
 

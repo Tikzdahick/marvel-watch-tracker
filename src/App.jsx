@@ -62,6 +62,7 @@ import CharactersPage       from './CharactersPage.jsx'
 import DCTracker            from './DCTracker.jsx'
 import HPTracker            from './HPTracker.jsx'
 import SWTracker            from './SWTracker.jsx'
+import MultiverseHub        from './MultiverseHub.jsx'
 import { MCU_CHRONO_ORDER } from './data/marvelExtras.js'
 
 // ── Era color map (for EraCompleteBanner) ─────────────────────────────────────
@@ -480,7 +481,7 @@ function CompletionModal({ config, watchedCount, achievementsUnlocked, onClose }
     const text = `🎬 MARVEL UNIVERSE COMPLETE!\n\n${watchedCount} titles conquered\nList: ${LIST_LABELS[config.listSize]}\nPace: ${PACE_LABELS[config.pace]}\nCompleted: ${today}\n🏆 ${achievementsUnlocked} achievements unlocked\n\n#MarvelWatchTracker`
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'Marvel Watch Tracker', text })
+        await navigator.share({ title: 'Multiverse Tracker', text })
       } else {
         await navigator.clipboard.writeText(text)
         alert('Copied to clipboard!')
@@ -952,7 +953,7 @@ export default function App() {
     const timer = setTimeout(() => {
       const nextUp = listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers))
       try {
-        new Notification('🎬 Marvel Watch Tracker', {
+        new Notification('🎬 Multiverse Tracker', {
           body: `Time to watch: ${nextUp?.title ?? 'your next Marvel title'}!`,
           icon: '/marvel-icon.svg',
         })
@@ -1978,41 +1979,23 @@ export default function App() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════ */}
-      {/* HOME TAB                                                               */}
+      {/* HOME TAB — Multiverse Hub                                             */}
       {/* ══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'home' && (
-        <HomePage
+        <MultiverseHub
           profile={profile}
-          stats={{ watchedCount: listWatchedCount, total, remaining, pct, unlockedAchievements }}
-          nextUp={listTitles.find(t => !watched.has(t.id) && !isTitleLocked(t.id, lockPins, unlockedTiers) && !t.comingSoon) ?? null}
-          loginDates={loginDates}
-          watchHistory={watchHistory}
-          dailyFact={dailyFact}
-          triviaState={triviaState}
-          parties={parties}
-          activeMood={activeMood}
-          onOpenMoodPicker={() => setShowMoodPicker(true)}
-          onOpenTrivia={() => setShowTrivia(true)}
-          onOpenWatchParty={() => setShowWatchParty(true)}
-          onOpenTierList={() => setShowTierList(true)}
+          marvelWatched={watched}
+          marvelTotal={listTitles.filter(t => !t.comingSoon).length}
           xp={xp}
-          weeklyState={weeklyState}
-          seasonState={seasonState}
-          debateState={debateState}
-          onDebateVote={handleDebateVote}
-          watched={watched}
-          allTitles={listTitles}
-          onNavigate={(tab) => {
-            if (tab === 'profile') { setShowProfile(true) }
-            else { setActiveTab(tab) }
-          }}
           onSelectFranchise={(franchise) => {
-            setActiveFranchise(franchise)
-            saveJSON('mvt-franchise', franchise)
+            if (franchise === 'marvel') {
+              setActiveTab('tracker')
+            } else {
+              setActiveFranchise(franchise)
+              saveJSON('mvt-franchise', franchise)
+            }
           }}
-          ratings={ratings}
-          onOpenDetail={tid => setDetailModalId(tid)}
-          onOpenRelationshipMap={() => setShowRelationshipMap(true)}
+          onNavigateMarvel={(tab) => setActiveTab(tab)}
         />
       )}
 
@@ -2032,7 +2015,7 @@ export default function App() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <h1 className="font-bebas text-[26px] tracking-[0.1em] text-white leading-none">
-                    MARVEL WATCH TRACKER
+                    MULTIVERSE TRACKER
                   </h1>
                   {profile && (
                     <div className="text-[10px] text-[#444] tracking-wide leading-none mt-0.5 truncate">

@@ -642,9 +642,10 @@ export default function SWTracker({ profile, onBack }) {
   const TABS = [
     { id: 'home',       label: 'HOME',    icon: '⭐' },
     { id: 'tracker',    label: 'TRACKER', icon: '🎬' },
-    { id: 'characters', label: 'CHARS',   icon: '⚔️' },
+    { id: 'characters', label: 'HEROES',  icon: '⚔️' },
     { id: 'awards',     label: 'AWARDS',  icon: '🏆' },
     { id: 'stats',      label: 'STATS',   icon: '📊' },
+    { id: 'profile',    label: 'PROFILE', icon: '👤' },
   ]
 
   return (
@@ -715,6 +716,50 @@ export default function SWTracker({ profile, onBack }) {
       {activeTab === 'characters' && <SWCharactersPage watched={watched}/>}
       {activeTab === 'awards'     && <SWAwardsPage watched={watched} allTitles={allTitles}/>}
       {activeTab === 'stats'      && <SWStatsPage watched={watched} allTitles={allTitles}/>}
+      {activeTab === 'profile'    && (
+        <div className="min-h-screen pb-24" style={{ background: BG }}>
+          <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
+            <div className="rounded-2xl p-5 flex flex-col items-center gap-3" style={{ background: BG_CARD2, border: `1px solid ${YELLOW}20` }}>
+              <AvatarDisplay avatar={profile?.avatar} name={profile?.name} size="home"/>
+              <div className="text-center">
+                <div className="font-bebas text-2xl text-white tracking-wide">{profile?.name ?? 'Padawan'}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>Star Wars Universe</div>
+              </div>
+              {(() => {
+                const rank = getSWRank(allTitles.filter(t => !t.comingSoon && watched.has(t.id)).length)
+                return (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                    style={{ background: `${rank.color}18`, border: `1px solid ${rank.color}33` }}>
+                    <span>{rank.icon}</span>
+                    <span className="text-[11px] font-bold" style={{ color: rank.color }}>{rank.label}</span>
+                  </div>
+                )
+              })()}
+            </div>
+            <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+              <div className="text-[9px] uppercase tracking-widest font-semibold mb-3" style={{ color: TEXT_DIM }}>Force Progress</div>
+              {[
+                { label: 'Titles Watched', value: allTitles.filter(t => !t.comingSoon && watched.has(t.id)).length, total: allTitles.filter(t => !t.comingSoon).length, color: YELLOW },
+                { label: 'Lightsaber Colors', value: SW_LIGHTSABER_COLORS.filter(c => c.filmIds.some(id => watched.has(id))).length, total: SW_LIGHTSABER_COLORS.length, color: BLUE },
+              ].map(s => (
+                <div key={s.label} className="mb-3 last:mb-0">
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span style={{ color: TEXT_MID }}>{s.label}</span>
+                    <span style={{ color: s.color }}>{s.value}/{s.total}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#111' }}>
+                    <div className="h-full rounded-full" style={{ width: `${s.total > 0 ? Math.round((s.value/s.total)*100) : 0}%`, background: s.color }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={onBack} className="w-full py-3 rounded-2xl text-[11px] font-bold tracking-widest transition-all"
+              style={{ background: BG_CARD2, color: TEXT_MID, border: `1px solid ${BORDER}` }}>
+              ← Back to Multiverse Hub
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30" style={{ background: `${BG}f5`, backdropFilter: 'blur(16px)', borderTop: `1px solid ${BORDER}` }}>

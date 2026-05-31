@@ -728,9 +728,10 @@ export default function HPTracker({ profile, onBack }) {
   const TABS = [
     { id: 'home',       label: 'HOME',    icon: '⚡' },
     { id: 'tracker',    label: 'TRACKER', icon: '📜' },
-    { id: 'characters', label: 'CHARS',   icon: '🧙' },
+    { id: 'characters', label: 'HEROES',  icon: '🧙' },
     { id: 'awards',     label: 'AWARDS',  icon: '🏆' },
     { id: 'stats',      label: 'STATS',   icon: '📊' },
+    { id: 'profile',    label: 'PROFILE', icon: '👤' },
   ]
 
   return (
@@ -805,8 +806,49 @@ export default function HPTracker({ profile, onBack }) {
       {activeTab === 'characters' && (
         <HPCharactersPage watched={watched} sortedHouse={sortedHouse} onSorted={handleSorted}/>
       )}
-      {activeTab === 'awards' && <HPAwardsPage watched={watched} allTitles={allTitles}/>}
-      {activeTab === 'stats'  && <HPStatsPage watched={watched} allTitles={allTitles}/>}
+      {activeTab === 'awards'  && <HPAwardsPage watched={watched} allTitles={allTitles}/>}
+      {activeTab === 'stats'   && <HPStatsPage watched={watched} allTitles={allTitles}/>}
+      {activeTab === 'profile' && (
+        <div className="min-h-screen pb-24" style={{ background: BG }}>
+          <div className="max-w-lg mx-auto px-4 pt-6 space-y-4">
+            <div className="rounded-2xl p-5 flex flex-col items-center gap-3" style={{ background: BG_CARD2, border: `1px solid ${GOLD}25` }}>
+              <AvatarDisplay avatar={profile?.avatar} name={profile?.name} size="home"/>
+              <div className="text-center">
+                <div className="font-bebas text-2xl text-white tracking-wide">{profile?.name ?? 'Wizard'}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: TEXT_MID }}>Harry Potter Universe</div>
+              </div>
+              {sortedHouse && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                  style={{ background: `${sortedHouse.color ?? GOLD}18`, border: `1px solid ${sortedHouse.color ?? GOLD}33` }}>
+                  <span>{sortedHouse.emoji}</span>
+                  <span className="text-[11px] font-bold" style={{ color: sortedHouse.color ?? GOLD }}>{sortedHouse.label}</span>
+                </div>
+              )}
+            </div>
+            <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
+              <div className="text-[9px] uppercase tracking-widest font-semibold mb-3" style={{ color: TEXT_DIM }}>Hogwarts Progress</div>
+              {[
+                { label: 'Films Watched', value: allTitles.filter(t => !t.comingSoon && watched.has(t.id)).length, total: allTitles.filter(t => !t.comingSoon).length, color: GOLD },
+                { label: 'Horcruxes Destroyed', value: HP_HORCRUXES.filter(h => watched.has(h.titleId)).length, total: 7, color: '#e74c3c' },
+              ].map(s => (
+                <div key={s.label} className="mb-3 last:mb-0">
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span style={{ color: TEXT_MID }}>{s.label}</span>
+                    <span style={{ color: s.color }}>{s.value}/{s.total}</span>
+                  </div>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: BORDER }}>
+                    <div className="h-full rounded-full" style={{ width: `${s.total > 0 ? Math.round((s.value/s.total)*100) : 0}%`, background: s.color }}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button onClick={onBack} className="w-full py-3 rounded-2xl text-[11px] font-bold tracking-widest transition-all"
+              style={{ background: BG_CARD2, color: TEXT_MID, border: `1px solid ${BORDER}` }}>
+              ← Back to Multiverse Hub
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-30" style={{ background: `${BG}f5`, backdropFilter: 'blur(16px)', borderTop: `1px solid ${BORDER}` }}>
