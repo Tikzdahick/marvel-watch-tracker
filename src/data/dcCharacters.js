@@ -5,6 +5,7 @@
 export const DC_CHARACTERS = [
   {
     key: 'batman',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/1c/The_Dark_Knight_%282008_film%29.jpg',
     name: 'Batman',
     realName: 'Bruce Wayne',
     role: 'Hero',
@@ -16,6 +17,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'superman',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/50/Man_of_Steel_%28film%29_poster.jpg',
     name: 'Superman',
     realName: 'Clark Kent',
     role: 'Hero',
@@ -27,6 +29,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'wonder_woman',
+    img: 'https://upload.wikimedia.org/wikipedia/en/b/b0/Wonder_Woman_%282017_film%29_poster.jpg',
     name: 'Wonder Woman',
     realName: 'Diana Prince',
     role: 'Hero',
@@ -38,6 +41,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'aquaman',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/ed/Aquaman_%28film%29_poster.jpg',
     name: 'Aquaman',
     realName: 'Arthur Curry',
     role: 'Hero',
@@ -49,6 +53,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'flash',
+    img: 'https://upload.wikimedia.org/wikipedia/en/7/74/The_Flash_%282023_film%29_poster.jpg',
     name: 'The Flash',
     realName: 'Barry Allen',
     role: 'Hero',
@@ -104,6 +109,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'harley_quinn',
+    img: 'https://upload.wikimedia.org/wikipedia/en/c/c9/HarleyQuinn_Various_incarnations.jpg',
     name: 'Harley Quinn',
     realName: 'Dr. Harleen Quinzel',
     role: 'Anti-Hero',
@@ -115,6 +121,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'joker',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/2b/Heath_Ledger_as_the_Joker_in_The_Dark_Knight.png',
     name: 'Joker',
     realName: 'Arthur Fleck',
     role: 'Villain',
@@ -137,6 +144,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'peacemaker',
+    img: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a0/Peacemaker_%28TV_series%29_logo.jpg/330px-Peacemaker_%28TV_series%29_logo.jpg',
     name: 'Peacemaker',
     realName: 'Christopher Smith',
     role: 'Anti-Hero',
@@ -148,6 +156,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'blue_beetle',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/5d/Blue_Beetle_%282023_film%29_poster.jpg',
     name: 'Blue Beetle',
     realName: 'Jaime Reyes',
     role: 'Hero',

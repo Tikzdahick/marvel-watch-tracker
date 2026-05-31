@@ -688,9 +688,10 @@ function DCHomePage({ profile, watched, listTitles, loginDates, onNavigate, onOp
           <div className="px-4 pt-4 pb-4" style={{ background: BG_CARD2 }}>
             <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>★ Featured Character · Daily Spotlight</div>
             <div className="flex items-start gap-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl flex-shrink-0"
+              <div className="w-14 h-14 rounded-2xl flex-shrink-0 overflow-hidden relative flex items-center justify-center"
                 style={{ background: featuredChar.bg || BG_CARD, border: `1px solid ${featuredChar.color ?? ACCENT}33` }}>
-                {featuredChar.emoji}
+                <span className="absolute inset-0 flex items-center justify-center text-3xl z-0">{featuredChar.emoji}</span>
+                {featuredChar.img && <img src={featuredChar.img} alt={featuredChar.name} className="absolute inset-0 w-full h-full object-cover object-top z-10" onError={e => { e.currentTarget.style.display='none' }}/>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -1215,8 +1216,9 @@ function DCHeroesPage({ watched, batmanSeen, onToggleBatmanSeen }) {
         <div className="flex-1 overflow-y-auto">
           {/* Banner */}
           <div className="w-full h-48 flex items-center justify-center relative overflow-hidden" style={{ background: c.bg }}>
-            <span className="text-8xl" style={{ filter: `drop-shadow(0 0 24px ${c.color}80)` }}>{c.emoji}</span>
-            <div className="absolute bottom-0 inset-x-0 h-12" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}/>
+            {c.img && <img src={c.img} alt={c.name} className="absolute inset-0 w-full h-full object-cover object-center z-0" onError={e => { e.currentTarget.style.display='none' }}/>}
+            <span className="relative z-10 text-8xl" style={{ filter: `drop-shadow(0 0 24px ${c.color}80)`, opacity: c.img ? 0 : 1 }}>{c.emoji}</span>
+            <div className="absolute bottom-0 inset-x-0 h-12 z-20" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)' }}/>
           </div>
           <div className="px-5 pt-5 pb-10 max-w-lg mx-auto">
             <div className="inline-block text-[9px] px-2 py-1 rounded-full font-bold tracking-widest mb-2"
@@ -1322,9 +1324,10 @@ function DCHeroesPage({ watched, batmanSeen, onToggleBatmanSeen }) {
               className="relative rounded-2xl overflow-hidden flex flex-col items-center text-center active:scale-95 transition-all"
               style={{ background: BG_CARD2, border: `1px solid ${BORDER}`, boxShadow: `0 2px 12px ${c.color}10` }}>
               {/* Banner */}
-              <div className="w-full h-28 flex items-center justify-center relative" style={{ background: c.bg }}>
-                <span className="text-5xl" style={{ filter: `drop-shadow(0 0 12px ${c.color}80)` }}>{c.emoji}</span>
-                <div className="absolute bottom-0 inset-x-0 h-0.5" style={{ background: c.color + '80' }}/>
+              <div className="w-full h-28 flex items-center justify-center relative overflow-hidden" style={{ background: c.bg }}>
+                {c.img && <img src={c.img} alt={c.name} className="absolute inset-0 w-full h-full object-cover object-top z-0" onError={e => { e.currentTarget.style.display='none' }}/>}
+                <span className="relative z-10 text-5xl" style={{ filter: `drop-shadow(0 0 12px ${c.color}80)`, opacity: c.img ? 0 : 1 }}>{c.emoji}</span>
+                <div className="absolute bottom-0 inset-x-0 h-0.5 z-20" style={{ background: c.color + '80' }}/>
               </div>
               {/* Info */}
               <div className="w-full px-2.5 py-2.5 text-left">

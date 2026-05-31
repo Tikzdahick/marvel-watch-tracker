@@ -39,7 +39,7 @@ export const CHARACTER_PROFILES = [
   // ── IRON MAN ─────────────────────────────────────────────────────────────────
   {
     id: 'iron-man',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/346-iron-man.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/47/Iron_Man_%28Marvel_Cinematic_Universe%29.png',
     name: 'Tony Stark',
     alias: 'Iron Man',
     charKey: 'Tony Stark',
@@ -58,7 +58,7 @@ export const CHARACTER_PROFILES = [
   // ── CAPTAIN AMERICA ───────────────────────────────────────────────────────────
   {
     id: 'captain-america',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/149-captain-america.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/6/6b/Steve_Rogers_%28Marvel_Cinematic_Universe%29.png',
     name: 'Steve Rogers',
     alias: 'Captain America',
     charKey: 'Steve Rogers',
@@ -77,7 +77,7 @@ export const CHARACTER_PROFILES = [
   // ── THOR ──────────────────────────────────────────────────────────────────────
   {
     id: 'thor',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/659-thor.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/e/e8/Thor_%28Marvel_Cinematic_Universe%29.png',
     name: 'Thor Odinson',
     alias: 'Thor',
     charKey: 'Thor',
@@ -96,7 +96,7 @@ export const CHARACTER_PROFILES = [
   // ── HULK ──────────────────────────────────────────────────────────────────────
   {
     id: 'hulk',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/332-hulk.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/1/1f/Bruce_Banner_%28Marvel_Cinematic_Universe%29.png',
     name: 'Bruce Banner',
     alias: 'The Hulk',
     charKey: 'Bruce Banner',
@@ -115,7 +115,7 @@ export const CHARACTER_PROFILES = [
   // ── BLACK WIDOW ───────────────────────────────────────────────────────────────
   {
     id: 'black-widow',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/107-black-widow.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/f/f6/Natasha_Romanoff_%28Marvel_Cinematic_Universe%29.png',
     name: 'Natasha Romanoff',
     alias: 'Black Widow',
     charKey: 'Black Widow',
@@ -134,7 +134,7 @@ export const CHARACTER_PROFILES = [
   // ── HAWKEYE ───────────────────────────────────────────────────────────────────
   {
     id: 'hawkeye',
-    img: 'https://upload.wikimedia.org/wikipedia/en/9/99/Hawkeye_%28Clinton_Barton%29.png',
+    img: 'https://upload.wikimedia.org/wikipedia/en/c/cf/Hawkeye_%28Marvel_Cinematic_Universe%29.png',
     name: 'Clint Barton',
     alias: 'Hawkeye',
     charKey: 'Hawkeye',
@@ -153,7 +153,7 @@ export const CHARACTER_PROFILES = [
   // ── SPIDER-MAN ────────────────────────────────────────────────────────────────
   {
     id: 'spider-man',
-    img: 'https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/md/620-spider-man.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/8/80/Peter_Parker_%28Marvel_Cinematic_Universe%29.png',
     name: 'Peter Parker',
     alias: 'Spider-Man',
     charKey: 'Peter Parker',
@@ -172,7 +172,7 @@ export const CHARACTER_PROFILES = [
   // ── DOCTOR STRANGE ────────────────────────────────────────────────────────────
   {
     id: 'doctor-strange',
-    img: 'https://upload.wikimedia.org/wikipedia/en/4/4f/Doctor_Strange_Vol_4_2_Ross_Variant_Textless.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/4f/Stephen_Strange_%28Marvel_Cinematic_Universe%29.png',
     name: 'Stephen Strange',
     alias: 'Doctor Strange',
     charKey: 'Stephen Strange',
@@ -191,7 +191,7 @@ export const CHARACTER_PROFILES = [
   // ── BLACK PANTHER ─────────────────────────────────────────────────────────────
   {
     id: 'black-panther',
-    img: 'https://upload.wikimedia.org/wikipedia/en/f/f7/Black_Panther_%28T%27Challa%29.png',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/2b/T%27Challa_%28Marvel_Cinematic_Universe%29.png',
     name: "T'Challa",
     alias: 'Black Panther',
     charKey: 'Black Panther',
@@ -210,7 +210,7 @@ export const CHARACTER_PROFILES = [
   // ── CAPTAIN MARVEL ────────────────────────────────────────────────────────────
   {
     id: 'captain-marvel',
-    img: 'https://upload.wikimedia.org/wikipedia/en/0/02/Carol_Danvers_-_%28evolution%29.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/6/65/Carol_Danvers_%28Marvel_Cinematic_Universe%29.png',
     name: 'Carol Danvers',
     alias: 'Captain Marvel',
     charKey: 'Captain Marvel',
@@ -305,7 +305,7 @@ export const CHARACTER_PROFILES = [
   // ── ANT-MAN ───────────────────────────────────────────────────────────────────
   {
     id: 'ant-man',
-    img: 'https://upload.wikimedia.org/wikipedia/en/3/38/Ant-Man_%28Scott_Lang%29.jpg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/05/Scott_Lang_%28Marvel_Cinematic_Universe%29.png',
     name: 'Scott Lang',
     alias: 'Ant-Man',
     charKey: 'Scott Lang',
@@ -324,7 +324,7 @@ export const CHARACTER_PROFILES = [
   // ── LOKI ──────────────────────────────────────────────────────────────────────
   {
     id: 'loki',
-    img: 'https://upload.wikimedia.org/wikipedia/en/e/ee/Various_incarnations_of_Loki_%282014%29.webp',
+    img: 'https://upload.wikimedia.org/wikipedia/en/8/8c/Loki_%28Marvel_Cinematic_Universe%29.png',
     name: 'Loki Laufeyson',
     alias: 'Loki, God of Mischief',
     charKey: 'Loki',
@@ -343,7 +343,7 @@ export const CHARACTER_PROFILES = [
   // ── STAR-LORD ─────────────────────────────────────────────────────────────────
   {
     id: 'star-lord',
-    img: 'https://upload.wikimedia.org/wikipedia/en/1/15/ST1.PNG',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/24/Peter_Quill_%28Marvel_Cinematic_Universe%29.png',
     name: 'Peter Quill',
     alias: 'Star-Lord',
     charKey: 'Peter Quill',
@@ -457,7 +457,7 @@ export const CHARACTER_PROFILES = [
   // ── THANOS ────────────────────────────────────────────────────────────────────
   {
     id: 'thanos',
-    img: 'https://upload.wikimedia.org/wikipedia/en/b/b7/Thanos_%28Infobox_image%29.png',
+    img: 'https://upload.wikimedia.org/wikipedia/en/2/2b/Thanos_%28Marvel_Cinematic_Universe%29.png',
     name: 'Thanos',
     alias: 'The Mad Titan',
     charKey: 'Thanos',

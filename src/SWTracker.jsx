@@ -329,9 +329,10 @@ function SWCharactersPage({ watched }) {
             return (
               <div key={c.id} className="flex items-start gap-3 p-3 rounded-xl"
                 style={{ background: BG_CARD2, border: `1px solid ${BORDER}` }}>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                <div className="w-11 h-11 rounded-xl flex-shrink-0 overflow-hidden relative flex items-center justify-center"
                   style={{ background: `${c.color ?? YELLOW}15`, border: `1px solid ${c.color ?? YELLOW}25` }}>
-                  {c.emoji}
+                  <span className="absolute inset-0 flex items-center justify-center text-2xl z-0">{c.emoji}</span>
+                  {c.img && <img src={c.img} alt={c.name} className="absolute inset-0 w-full h-full object-cover object-top z-10" onError={e => { e.currentTarget.style.display='none' }}/>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -553,9 +554,10 @@ function SWHomePage({ profile, watched, allTitles, onNavigate }) {
         <div className="rounded-2xl p-4" style={{ background: BG_CARD2, border: `1px solid ${YELLOW}15` }}>
           <div className="text-[9px] uppercase tracking-widest mb-3 font-semibold" style={{ color: TEXT_DIM }}>★ Daily Character Spotlight</div>
           <div className="flex items-start gap-3">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+            <div className="w-12 h-12 rounded-xl flex-shrink-0 overflow-hidden relative flex items-center justify-center"
               style={{ background: `${featuredChar.color ?? YELLOW}15`, border: `1px solid ${featuredChar.color ?? YELLOW}25` }}>
-              {featuredChar.emoji}
+              <span className="absolute inset-0 flex items-center justify-center text-2xl z-0">{featuredChar.emoji}</span>
+              {featuredChar.img && <img src={featuredChar.img} alt={featuredChar.name} className="absolute inset-0 w-full h-full object-cover object-top z-10" onError={e => { e.currentTarget.style.display='none' }}/>}
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-bebas text-lg leading-none mb-0.5" style={{ color: featuredChar.color ?? YELLOW }}>{featuredChar.name}</div>
