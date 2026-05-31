@@ -65,6 +65,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'green_lantern',
+    img: 'https://upload.wikimedia.org/wikipedia/en/6/6b/Green_Lantern_poster.jpg',
     name: 'Green Lantern',
     realName: 'Hal Jordan',
     role: 'Hero',
@@ -76,6 +77,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'cyborg',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/58/Cyborg_%28Victor_Stone%29.jpg',
     name: 'Cyborg',
     realName: 'Victor Stone',
     role: 'Hero',
@@ -87,6 +89,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'shazam',
+    img: 'https://upload.wikimedia.org/wikipedia/en/c/c2/Shazam%21_%28film%29_poster.jpg',
     name: 'Shazam',
     realName: 'Billy Batson',
     role: 'Hero',
@@ -98,6 +101,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'black_adam',
+    img: 'https://upload.wikimedia.org/wikipedia/en/a/a9/Black_Adam_%28film%29_poster.jpg',
     name: 'Black Adam',
     realName: 'Teth-Adam',
     role: 'Anti-Hero',
@@ -133,6 +137,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'lex_luthor',
+    img: 'https://upload.wikimedia.org/wikipedia/en/9/9b/Lex_Luthor_%28comic_book_supervillain%29_infobox_image.png',
     name: 'Lex Luthor',
     realName: 'Alexander Luthor Jr.',
     role: 'Villain',
@@ -168,6 +173,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'supergirl',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/Melissa_Benoist_%2848477063086%29_%28cropped%29.jpg/330px-Melissa_Benoist_%2848477063086%29_%28cropped%29.jpg',
     name: 'Supergirl',
     realName: 'Kara Zor-El',
     role: 'Hero',
@@ -179,6 +185,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'catwoman',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/04/Catwoman_poster.jpg',
     name: 'Catwoman',
     realName: 'Selina Kyle',
     role: 'Anti-Hero',
@@ -190,6 +197,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'deadshot',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_%2848834070763%29_%28cropped%29.jpg/330px-TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_%2848834070763%29_%28cropped%29.jpg',
     name: 'Deadshot',
     realName: 'Floyd Lawton',
     role: 'Anti-Hero',
@@ -201,6 +209,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'amanda_waller',
+    img: 'https://upload.wikimedia.org/wikipedia/en/8/8e/Amanda_Waller_Suicide_Squad_v5_8.png',
     name: 'Amanda Waller',
     realName: 'Amanda Waller',
     role: 'Antagonist',
@@ -223,6 +232,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'lois_lane',
+    img: 'https://upload.wikimedia.org/wikipedia/en/a/a4/LoisLane-1.png',
     name: 'Lois Lane',
     realName: 'Lois Lane',
     role: 'Hero',
@@ -271,6 +281,7 @@ export const DC_CHARACTERS = [
   // ── Bat Family ────────────────────────────────────────────────────────────
   {
     key: 'nightwing',
+    img: 'https://upload.wikimedia.org/wikipedia/en/4/41/Nightwing_Infobox.jpg',
     name: 'Nightwing',
     realName: 'Dick Grayson',
     role: 'Hero',
@@ -1317,6 +1328,7 @@ export const DC_CHARACTERS = [
   // ── Villains ──────────────────────────────────────────────────────────────
   {
     key: 'two_face',
+    img: 'https://upload.wikimedia.org/wikipedia/en/0/02/TwoFaceYearOne.png',
     name: 'Two-Face',
     realName: 'Harvey Dent',
     role: 'Villain',
@@ -1328,6 +1340,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'penguin',
+    img: 'https://upload.wikimedia.org/wikipedia/en/f/f2/Penguin_%28Oswald_Cobblepot%29.png',
     name: 'The Penguin',
     realName: 'Oswald Cobblepot',
     role: 'Villain',
@@ -1361,6 +1374,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'poison_ivy',
+    img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/UmaThurman-byPhilipRomano.jpg/330px-UmaThurman-byPhilipRomano.jpg',
     name: 'Poison Ivy',
     realName: 'Pamela Isley',
     role: 'Villain',
@@ -1383,6 +1397,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'bane',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/59/Bane_%28DC_Comics_character%29.png',
     name: 'Bane',
     realName: 'Bane',
     role: 'Villain',
@@ -1394,6 +1409,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'ras_al_ghul',
+    img: 'https://upload.wikimedia.org/wikipedia/en/f/f7/Ra%27s_al_Ghul.png',
     name: "Ra's al Ghul",
     realName: "Ra's al Ghul",
     role: 'Villain',
@@ -1438,6 +1454,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'deathstroke',
+    img: 'https://upload.wikimedia.org/wikipedia/en/6/6e/Deathstroke_%28DC_Comics%29.webp',
     name: 'Deathstroke',
     realName: 'Slade Wilson',
     role: 'Villain',
@@ -1902,6 +1919,7 @@ export const DC_CHARACTERS = [
   // ── The Batman (2022) / Reevesverse ───────────────────────────────────────
   {
     key: 'alfred_pennyworth',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/5c/Alfred_Pennyworth_%28Alex_Ross%29.jpg',
     name: 'Alfred Pennyworth',
     realName: 'Alfred Thaddeus Crane Pennyworth',
     role: 'Hero',
@@ -1913,6 +1931,7 @@ export const DC_CHARACTERS = [
   },
   {
     key: 'commissioner_gordon',
+    img: 'https://upload.wikimedia.org/wikipedia/en/5/56/James_Gordon_%28DC_Comics_character%29.png',
     name: 'Commissioner Gordon',
     realName: 'James Gordon',
     role: 'Hero',
